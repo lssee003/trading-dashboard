@@ -1,0 +1,395 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===================================================================
+   "Should I Be Trading?" — Dual-theme System
+   Light: TradingView / Professional (default in :root)
+   Dark: Bloomberg Terminal (activated via .dark class)
+   =================================================================== */
+
+/* ---------- Light Mode (TradingView Professional) ---------- */
+:root {
+  --button-outline: rgba(0,0,0, .08);
+  --badge-outline: rgba(0,0,0, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .06);
+
+  /* Surfaces */
+  --background: 210 20% 98%;
+  --foreground: 220 40% 8%;
+  --border: 214 20% 88%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 40% 8%;
+  --card-border: 214 20% 90%;
+  --sidebar: 210 20% 97%;
+  --sidebar-foreground: 220 40% 8%;
+  --sidebar-border: 214 20% 88%;
+  --sidebar-primary: 200 80% 40%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 20% 94%;
+  --sidebar-accent-foreground: 220 40% 8%;
+  --sidebar-ring: 200 80% 40%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 40% 8%;
+  --popover-border: 214 20% 88%;
+
+  /* Bloomberg blue accent */
+  --primary: 200 80% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 94%;
+  --secondary-foreground: 220 40% 30%;
+  --muted: 210 15% 92%;
+  --muted-foreground: 215 15% 45%;
+  --accent: 210 20% 94%;
+  --accent-foreground: 220 40% 8%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 214 20% 88%;
+  --ring: 200 80% 40%;
+
+  /* Signal colors for charts */
+  --chart-1: 142 72% 35%;
+  --chart-2: 0 72% 51%;
+  --chart-3: 45 95% 45%;
+  --chart-4: 200 80% 40%;
+  --chart-5: 280 60% 45%;
+
+  /* Custom terminal font stack */
+  --font-sans: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-serif: Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --radius: .375rem;
+
+  --shadow-2xs: none;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow: 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-xl: 0 8px 24px rgba(0,0,0,0.1);
+  --shadow-2xl: 0 16px 48px rgba(0,0,0,0.12);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  /* Terminal signal colors — light (TradingView palette) */
+  --terminal-green: #16A34A;
+  --terminal-red: #DC2626;
+  --terminal-amber: #D97706;
+  --terminal-blue: #2563EB;
+  --terminal-cyan: #0284C7;
+  --terminal-dim: #94A3B8;
+  --terminal-bg: #F8FAFC;
+  --terminal-surface: #FFFFFF;
+  --terminal-surface-2: #F1F5F9;
+  --terminal-border: #E2E8F0;
+
+  /* Theme-aware overlay/emphasis vars */
+  --overlay-subtle: rgba(0, 0, 0, 0.03);
+  --overlay-light: rgba(0, 0, 0, 0.05);
+  --overlay-medium: rgba(0, 0, 0, 0.08);
+
+  /* Gain / loss chip backgrounds */
+  --gain-chip-bg: #DCFCE7;
+  --loss-chip-bg: #FEE2E2;
+  --amber-chip-bg: #FEF3C7;
+
+  /* Text colors */
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+
+  /* Ticker bar bg */
+  --ticker-bg: rgba(0, 0, 0, 0.04);
+
+  /* Alert bg / border */
+  --alert-amber-bg: rgba(217, 119, 6, 0.08);
+  --alert-amber-border: rgba(217, 119, 6, 0.25);
+
+  /* Decision panel tints */
+  --decision-green-bg: rgba(22, 163, 74, 0.06);
+  --decision-green-border: rgba(22, 163, 74, 0.2);
+  --decision-amber-bg: rgba(217, 119, 6, 0.06);
+  --decision-amber-border: rgba(217, 119, 6, 0.2);
+  --decision-red-bg: rgba(220, 38, 38, 0.06);
+  --decision-red-border: rgba(220, 38, 38, 0.2);
+
+  /* Score bar track */
+  --bar-track: rgba(0, 0, 0, 0.06);
+
+  /* Sector bar bg */
+  --sector-bar-bg: rgba(0, 0, 0, 0.03);
+  --sector-green-mid: rgba(22, 163, 74, 0.4);
+  --sector-red-mid: rgba(220, 38, 38, 0.4);
+
+  /* Mode chip bg */
+  --chip-bg: rgba(0, 0, 0, 0.05);
+
+  /* Score circle track */
+  --circle-track: rgba(0, 0, 0, 0.08);
+
+  /* Fallback for older browsers */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+/* ---------- Dark Mode (Bloomberg Terminal) ---------- */
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  --background: 220 20% 6%;
+  --foreground: 200 20% 90%;
+  --border: 220 15% 15%;
+  --card: 220 18% 9%;
+  --card-foreground: 200 20% 90%;
+  --card-border: 220 15% 13%;
+  --sidebar: 220 20% 8%;
+  --sidebar-foreground: 200 20% 90%;
+  --sidebar-border: 220 15% 12%;
+  --sidebar-primary: 200 80% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 15% 14%;
+  --sidebar-accent-foreground: 200 20% 90%;
+  --sidebar-ring: 200 80% 50%;
+  --popover: 220 18% 10%;
+  --popover-foreground: 200 20% 90%;
+  --popover-border: 220 15% 15%;
+  --primary: 200 80% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 15% 14%;
+  --secondary-foreground: 200 20% 85%;
+  --muted: 220 12% 16%;
+  --muted-foreground: 210 10% 55%;
+  --accent: 220 15% 14%;
+  --accent-foreground: 200 20% 90%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 220 15% 20%;
+  --ring: 200 80% 50%;
+  --chart-1: 142 72% 45%;
+  --chart-2: 0 72% 51%;
+  --chart-3: 45 95% 55%;
+  --chart-4: 200 80% 50%;
+  --chart-5: 280 60% 55%;
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-xl: 0 8px 24px rgba(0,0,0,0.6);
+  --shadow-2xl: 0 16px 48px rgba(0,0,0,0.7);
+
+  /* Terminal signal colors — dark (Bloomberg) */
+  --terminal-green: #00e676;
+  --terminal-red: #ff1744;
+  --terminal-amber: #ffab00;
+  --terminal-blue: #2196f3;
+  --terminal-cyan: #00e5ff;
+  --terminal-dim: #546e7a;
+  --terminal-bg: #0a0f1a;
+  --terminal-surface: #111827;
+  --terminal-surface-2: #1a2332;
+  --terminal-border: #1e3a5f;
+
+  /* Theme-aware overlay/emphasis vars */
+  --overlay-subtle: rgba(255, 255, 255, 0.03);
+  --overlay-light: rgba(255, 255, 255, 0.06);
+  --overlay-medium: rgba(255, 255, 255, 0.10);
+
+  /* Gain / loss chip backgrounds */
+  --gain-chip-bg: rgba(0, 230, 118, 0.12);
+  --loss-chip-bg: rgba(255, 23, 68, 0.12);
+  --amber-chip-bg: rgba(255, 171, 0, 0.12);
+
+  /* Text colors */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #546e7a;
+
+  /* Ticker bar bg */
+  --ticker-bg: rgba(0, 0, 0, 0.3);
+
+  /* Alert bg / border */
+  --alert-amber-bg: rgba(255, 171, 0, 0.1);
+  --alert-amber-border: rgba(255, 171, 0, 0.3);
+
+  /* Decision panel tints */
+  --decision-green-bg: rgba(0, 230, 118, 0.08);
+  --decision-green-border: rgba(0, 230, 118, 0.25);
+  --decision-amber-bg: rgba(255, 171, 0, 0.08);
+  --decision-amber-border: rgba(255, 171, 0, 0.25);
+  --decision-red-bg: rgba(255, 23, 68, 0.08);
+  --decision-red-border: rgba(255, 23, 68, 0.25);
+
+  /* Score bar track */
+  --bar-track: rgba(255, 255, 255, 0.06);
+
+  /* Sector bar bg */
+  --sector-bar-bg: rgba(255, 255, 255, 0.03);
+  --sector-green-mid: rgba(0, 230, 118, 0.5);
+  --sector-red-mid: rgba(255, 23, 68, 0.5);
+
+  /* Mode chip bg */
+  --chip-bg: rgba(255, 255, 255, 0.06);
+
+  /* Score circle track */
+  --circle-track: rgba(255, 255, 255, 0.06);
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}
+
+/* Scrollbar — adapts to theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--overlay-medium);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--overlay-medium);
+  opacity: 0.8;
+}
+
+/* Ticker animation */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-animate {
+  animation: ticker-scroll 60s linear infinite;
+}
+
+/* Pulse for live indicator */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.pulse-live {
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+/* Circular score animation */
+@keyframes score-fill {
+  from { stroke-dashoffset: 283; }
+}
+
+/* Shimmer skeleton — light mode */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-terminal {
+  background: linear-gradient(90deg, var(--terminal-surface) 25%, var(--terminal-surface-2) 50%, var(--terminal-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@layer utilities {
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+  .no-default-hover-elevate {}
+  .no-default-active-elevate {}
+  .toggle-elevate::before,
+  .toggle-elevate-2::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: -1;
+  }
+  .toggle-elevate.toggle-elevated::before {
+    background-color: var(--elevate-2);
+  }
+  .border.toggle-elevate::before {
+    inset: -1px;
+  }
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate),
+  .hover-elevate-2:not(.no-default-hover-elevate),
+  .active-elevate-2:not(.no-default-active-elevate) {
+    position: relative;
+    z-index: 0;
+  }
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after,
+  .hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:not(.no-default-active-elevate)::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: 999;
+  }
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+    inset: -1px;
+  }
+}
