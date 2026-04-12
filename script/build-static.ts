@@ -12,15 +12,14 @@ import path from "path";
 async function buildStatic() {
   await rm("dist", { recursive: true, force: true });
 
-  console.log("Building static client...");
-  
-  // Explicitly set environment variable
-  process.env.VITE_DATA_MODE = "static";
-  console.log("Set VITE_DATA_MODE=static");
-  
+  console.log("Building static client (VITE_DATA_MODE=static)...");
+
   await viteBuild({
     mode: "production",
     configFile: path.resolve(process.cwd(), "vite.config.ts"),
+    define: {
+      "import.meta.env.VITE_DATA_MODE": JSON.stringify("static"),
+    },
   });
 
   console.log("Static build complete → dist/public/");
