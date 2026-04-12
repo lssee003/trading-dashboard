@@ -5,7 +5,7 @@ const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
 // In static mode, data comes from pre-built JSON files in /data/.
 // In api mode (dev), data comes from the Express server.
 const API_BASE = IS_STATIC
-  ? "."
+  ? "/trading-dashboard"
   : "__PORT_5000__".startsWith("__") ? "." : "__PORT_5000__";
 
 // Map API query keys to static JSON file paths
@@ -42,9 +42,8 @@ export async function apiRequest(
   return res;
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
+  on401: "returnNull" | "throw";
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
@@ -63,7 +62,7 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    return res.json();
   };
 
 export const queryClient = new QueryClient({
