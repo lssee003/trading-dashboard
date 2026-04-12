@@ -4,8 +4,9 @@ const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
 
 // In static mode, data comes from pre-built JSON files in /data/.
 // In api mode (dev), data comes from the Express server.
+// Use Vite's BASE_URL which respects the base config in vite.config.ts
 const API_BASE = IS_STATIC
-  ? "/trading-dashboard"
+  ? import.meta.env.BASE_URL.replace(/\/$/, "") // Remove trailing slash
   : "__PORT_5000__".startsWith("__") ? "." : "__PORT_5000__";
 
 // Map API query keys to static JSON file paths
