@@ -1,8 +1,24 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-// __PORT_5000__ is replaced by deploy_website at deploy time with the proxy path.
-// Locally it stays as the literal string, so we detect that and use "." instead.
-const API_BASE = "__PORT_5000__".startsWith("__") ? "." : "__PORT_5000__";
+const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
+
+// In static mode, data comes from pre-built JSON files in /data/.
+// In api mode (dev), data comes from the Express server.
+const API_BASE = IS_STATIC
+  ? "."
+  : "__PORT_5000__".startsWith("__") ? "." : "__PORT_5000__";
+
+// Map API query keys to static JSON file paths
+const STATIC_PATH_MAP: Record<string, string> = {
+  "/api/dashboard": "/data/dashboard.json",
+  "/api/relative-strength": "/data/rs.json",
+};
+
+function resolveStaticPath(queryKey: readonly unknown[]): string {
+  // Extract the base path (first element) and ignore query params for static mode
+  const basePath = String(queryKey[0]);
+  return STATIC_PATH_MAP[basePath] || basePath;
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -32,8 +48,15 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const path = queryKey.join("/").replace(/\/\/+/g, "/");
-    const res = await fetch(`${API_BASE}${path}`);
+    let url: string;
+    if (IS_STATIC) {
+      url = `${API_BASE}${resolveStaticPath(queryKey)}`;
+    } else {
+      const path = queryKey.join("/").replace(/\/\/+/g, "/");
+      url = `${API_BASE}${path}`;
+    }
+
+    const res = await fetch(url);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
@@ -47,9 +70,11 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: 45_000, // Auto-refresh every 45 seconds
-      refetchOnWindowFocus: true,
-      staleTime: 30_000,
+      // Static mode: no polling, data is a daily snapshot
+      // API mode: poll every 45s
+      refetchInterval: IS_STATIC ? false : 45_000,
+      refetchOnWindowFocus: !IS_STATIC,
+      staleTime: IS_STATIC ? Infinity : 30_000,
       retry: 2,
     },
     mutations: {

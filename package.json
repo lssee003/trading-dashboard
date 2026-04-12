@@ -11,7 +11,9 @@
     "db:push": "drizzle-kit push",
     "test": "vitest run --exclude 'server/__tests__/breadthSnapshot.test.ts'",
     "test:watch": "vitest --exclude 'server/__tests__/breadthSnapshot.test.ts'",
-    "test:live": "vitest run server/__tests__/breadthSnapshot.test.ts"
+    "test:live": "vitest run server/__tests__/breadthSnapshot.test.ts",
+    "refresh": "tsx script/refresh.ts",
+    "build:static": "tsx script/build-static.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
