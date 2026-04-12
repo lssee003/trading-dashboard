@@ -1,0 +1,48 @@
+name: Refresh Market Data & Deploy
+
+on:
+  schedule:
+    # 9:15 AM ET on weekdays (13:15 UTC during EDT, 14:15 UTC during EST)
+    - cron: '15 13 * * 1-5'
+    - cron: '15 14 * * 1-5'
+  workflow_dispatch: # manual trigger
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch market data
+        run: npx tsx script/refresh.ts
+
+      - name: Build static site
+        run: npx tsx script/build-static.ts
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
