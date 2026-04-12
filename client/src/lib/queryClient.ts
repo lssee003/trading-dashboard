@@ -2,12 +2,19 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
 
+// Debug: log the mode
+console.log("[QueryClient] VITE_DATA_MODE:", import.meta.env.VITE_DATA_MODE);
+console.log("[QueryClient] IS_STATIC:", IS_STATIC);
+console.log("[QueryClient] BASE_URL:", import.meta.env.BASE_URL);
+
 // In static mode, data comes from pre-built JSON files in /data/.
 // In api mode (dev), data comes from the Express server.
 // Use Vite's BASE_URL which respects the base config in vite.config.ts
 const API_BASE = IS_STATIC
   ? import.meta.env.BASE_URL.replace(/\/$/, "") // Remove trailing slash
   : "__PORT_5000__".startsWith("__") ? "." : "__PORT_5000__";
+
+console.log("[QueryClient] API_BASE:", API_BASE);
 
 // Map API query keys to static JSON file paths
 const STATIC_PATH_MAP: Record<string, string> = {
@@ -51,9 +58,11 @@ export const getQueryFn: <T>(options: {
     let url: string;
     if (IS_STATIC) {
       url = `${API_BASE}${resolveStaticPath(queryKey)}`;
+      console.log("[QueryClient] Static mode - fetching from:", url);
     } else {
       const path = queryKey.join("/").replace(/\/\/+/g, "/");
       url = `${API_BASE}${path}`;
+      console.log("[QueryClient] API mode - fetching from:", url);
     }
 
     const res = await fetch(url);
