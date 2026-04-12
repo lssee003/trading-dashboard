@@ -7,12 +7,21 @@
 
 import { build as viteBuild } from "vite";
 import { rm } from "fs/promises";
+import path from "path";
 
 async function buildStatic() {
   await rm("dist", { recursive: true, force: true });
 
   console.log("Building static client...");
-  await viteBuild({ mode: "production" });
+  
+  // Explicitly set environment variable
+  process.env.VITE_DATA_MODE = "static";
+  console.log("Set VITE_DATA_MODE=static");
+  
+  await viteBuild({
+    mode: "production",
+    configFile: path.resolve(process.cwd(), "vite.config.ts"),
+  });
 
   console.log("Static build complete → dist/public/");
 }
