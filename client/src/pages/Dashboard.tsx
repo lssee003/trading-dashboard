@@ -12,6 +12,8 @@ import { RefreshCw, Activity, Sun, Moon, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { useTheme } from "@/hooks/useTheme";
 
+const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
+
 export default function Dashboard() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);
@@ -28,8 +30,10 @@ export default function Dashboard() {
     }
   }, [data?.lastUpdated]);
 
-  // Update "seconds ago" counter
+  // Update "seconds ago" counter (only in API mode)
   useEffect(() => {
+    if (IS_STATIC) return; // Don't run timer in static mode
+    
     const interval = setInterval(() => {
       setSecondsAgo(Math.floor((Date.now() - lastRefresh.getTime()) / 1000));
     }, 1000);
@@ -37,7 +41,27 @@ export default function Dashboard() {
   }, [lastRefresh]);
 
   const handleRefresh = () => {
-    refetch();
+    if (!IS_STATIC) {
+      refetch();
+    }
+  };
+
+  // Format timestamp for static mode
+  const formatDataTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 1) {
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      return diffMins < 1 ? "just now" : `${diffMins}m ago`;
+    }
+    if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    }
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   };
 
   if (isError) {
@@ -47,14 +71,16 @@ export default function Dashboard() {
           <Activity className="w-12 h-12 mx-auto mb-4 opacity-40" />
           <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA FEED ERROR</h2>
           <p className="text-sm opacity-60 mb-4 max-w-md">{(error as Error)?.message || "Failed to connect to market data feed"}</p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 rounded text-sm font-medium transition-colors"
-            style={{ background: "var(--terminal-blue)", color: "#fff" }}
-            data-testid="button-retry"
-          >
-            Retry Connection
-          </button>
+          {!IS_STATIC && (
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 rounded text-sm font-medium transition-colors"
+              style={{ background: "var(--terminal-blue)", color: "#fff" }}
+              data-testid="button-retry"
+            >
+              Retry Connection
+            </button>
+          )}
         </div>
       </div>
     );
@@ -95,17 +121,29 @@ export default function Dashboard() {
             {/* Status */}
             <div className="flex items-center gap-1.5">
               <span
-                className="w-2 h-2 rounded-full pulse-live"
-                style={{ background: isFetching ? "var(--terminal-amber)" : "var(--terminal-green)" }}
+                className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
+                style={{ 
+                  background: IS_STATIC 
+                    ? "var(--terminal-cyan)" 
+                    : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") 
+                }}
               />
-              <span style={{ color: isFetching ? "var(--terminal-amber)" : "var(--terminal-green)" }}>
-                {isFetching ? "UPDATING" : "LIVE"}
+              <span style={{ 
+                color: IS_STATIC 
+                  ? "var(--terminal-cyan)" 
+                  : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") 
+              }}>
+                {IS_STATIC 
+                  ? "SNAPSHOT" 
+                  : (isFetching ? "UPDATING" : "LIVE")}
               </span>
             </div>
 
             {/* Last updated */}
             <span className="opacity-40">
-              updated {secondsAgo}s ago
+              {IS_STATIC && data?.lastUpdated
+                ? `updated ${formatDataTimestamp(data.lastUpdated)}`
+                : `updated ${secondsAgo}s ago`}
             </span>
           </div>
 
@@ -124,14 +162,16 @@ export default function Dashboard() {
               )}
             </button>
 
-            {/* Refresh */}
-            <button
-              onClick={handleRefresh}
-              className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
-              data-testid="button-refresh"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-            </button>
+            {/* Refresh (hidden in static mode) */}
+            {!IS_STATIC && (
+              <button
+                onClick={handleRefresh}
+                className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
+                data-testid="button-refresh"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+              </button>
+            )}
           </div>
         </div>
       </header>
