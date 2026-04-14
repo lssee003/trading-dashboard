@@ -15,6 +15,8 @@ import {
   type CategoryFilter,
 } from "@/lib/rsConstants";
 
+const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
+
 type SortKey = "symbol" | "name" | "category" | "latestClose" | "returnPct" | "rsVsBenchmark" | "rsPulse";
 type SortDir = "asc" | "desc";
 
@@ -258,11 +260,21 @@ export default function RelativeStrength() {
             {/* Status */}
             <div className="flex items-center gap-1.5">
               <span
-                className="w-2 h-2 rounded-full pulse-live"
-                style={{ background: isFetching ? "var(--terminal-amber)" : "var(--terminal-green)" }}
+                className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
+                style={{
+                  background: IS_STATIC
+                    ? "var(--terminal-cyan)"
+                    : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)")
+                }}
               />
-              <span style={{ color: isFetching ? "var(--terminal-amber)" : "var(--terminal-green)" }}>
-                {isFetching ? "LOADING" : "LIVE"}
+              <span style={{
+                color: IS_STATIC
+                  ? "var(--terminal-cyan)"
+                  : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)")
+              }}>
+                {IS_STATIC
+                  ? "SNAPSHOT"
+                  : (isFetching ? "LOADING" : "LIVE")}
               </span>
             </div>
           </div>
@@ -503,7 +515,7 @@ export default function RelativeStrength() {
                   {laggards.map((t, i) => (
                     <div key={t.symbol} className="flex items-center justify-between text-[11px]">
                       <div className="flex items-center gap-2">
-                        <span className="w-4 text-right" style={{ color: "var(--text-muted)" }}>{data.tickers.length - 4 + i}</span>
+                        <span className="w-4 text-right" style={{ color: "var(--text-muted)" }}>{data.tickers.length - i}</span>
                         <span className="font-bold" style={{ color: "var(--text-primary)" }}>{t.symbol}</span>
                         <span style={{ color: "var(--text-muted)" }}>{t.name}</span>
                       </div>
