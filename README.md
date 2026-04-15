@@ -16,6 +16,20 @@ Pulls data from Yahoo Finance (S&P 500 breadth, sector ETFs, VIX, Treasury yield
 
 Each indicator has a hover tooltip explaining what it measures and why it matters.
 
+## Screenshots
+
+**Market Monitor** — scoring dashboard with indicator breakdown and trade decision
+![Market Monitor](img/Market%20Monitor.png)
+
+**Market Breadth** — Google Sheets-powered breadth table with conditional formatting
+![Market Breadth](img/Market%20Breadth.png)
+
+**Relative Strength** — 25-day RS histogram with sector rotation analysis
+![Relative Strength](img/Relative%20Strength%20(Light).png)
+
+**Relative Rotation Graph (RRG)** — sector momentum and rotation visualization
+![RRG](img/RRG.png)
+
 ## Stack
 
 - **Frontend:** React + TypeScript, Tailwind CSS, Recharts, Radix UI
