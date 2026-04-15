@@ -196,10 +196,10 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   const validRows = getValidRows(dataRows);
   if (validRows.length === 0) return null;
 
-  // Newest data is at the END of the array (sheet appends rows at bottom)
-  const latest = rowVals(validRows[validRows.length - 1]);
-  // Scan up to 20 most recent rows (reversed so index 0 = most recent)
-  const recent = validRows.slice(-20).reverse().map(rowVals);
+  // Sheet is ordered newest-first: validRows[0] = most recent trading day
+  const latest = rowVals(validRows[0]);
+  // Scan up to 20 most recent rows — already in newest-first order
+  const recent = validRows.slice(0, 20).map(rowVals);
 
   const {
     up4, down4, ratio5d, ratio10d, up25q, down25q, up25m, down25m,

@@ -44,10 +44,10 @@ async function fetchSheetsBreadthData(): Promise<SheetsBreadthData | null> {
     );
     if (valid.length === 0) return null;
 
-    // Newest row is the LAST valid row (sheet appends newest at bottom)
-    const latest = valid[valid.length - 1];
-    const last5 = valid.slice(-5);
-    const last10 = valid.slice(-10);
+    // Sheet is ordered newest-first: valid[0] = most recent trading day
+    const latest = valid[0];
+    const last5  = valid.slice(0, 5);
+    const last10 = valid.slice(0, 10);
     const sumCol = (rows: SheetsCell[][], ci: number) =>
       rows.reduce((s, r) => s + (sheetNum(r, ci) ?? 0), 0);
 
