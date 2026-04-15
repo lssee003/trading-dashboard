@@ -91,8 +91,8 @@ export default function Dashboard() {
       {/* Top Bar */}
       <header className="flex-shrink-0 border-b" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
         {/* Status Bar */}
-        <div className="flex items-center justify-between px-4 py-2 text-xs">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between px-4 py-2 text-xs gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
             {/* Logo */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-label="Trading Dashboard Logo">
               <rect x="2" y="2" width="20" height="20" rx="3" stroke="var(--terminal-cyan)" strokeWidth="1.5"/>
@@ -157,7 +157,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
