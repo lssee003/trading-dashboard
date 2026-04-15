@@ -12,13 +12,19 @@ const API_BASE = IS_STATIC
 // Map API query keys to static JSON file paths
 const STATIC_PATH_MAP: Record<string, string> = {
   "/api/dashboard": "/data/dashboard.json",
-  "/api/relative-strength": "/data/rs.json",
   "/api/sheets": "/data/sheets.json",
 };
 
 function resolveStaticPath(queryKey: readonly unknown[]): string {
-  // Extract the base path (first element) and ignore query params for static mode
   const basePath = String(queryKey[0]);
+
+  // RS endpoint has per-lookback files (rs-10.json, rs-25.json, etc.)
+  if (basePath === "/api/relative-strength") {
+    const params = new URLSearchParams(String(queryKey[1] ?? "").replace(/^\?/, ""));
+    const lookback = params.get("lookback") || "25";
+    return `/data/rs-${lookback}.json`;
+  }
+
   return STATIC_PATH_MAP[basePath] || basePath;
 }
 
