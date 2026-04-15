@@ -340,18 +340,25 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
 
                 return (
                   <g key={ticker.symbol} opacity={masterOpacity}>
-                    {/* Tapering trail segments: oldest ~0.15 opacity → newest ~0.85 */}
+                    {/* Tapering trail segments: oldest ~0.15 opacity → newest ~0.85, curved via catmull-rom */}
                     {ticker.trail.slice(0, -1).map((p, i) => {
                       const next = ticker.trail[i + 1];
+                      // catmull-rom control points using neighbours
+                      const prev = ticker.trail[i - 1] ?? p;
+                      const afterNext = ticker.trail[i + 2] ?? next;
+                      const tension = 0.4;
+                      const cp1x = scaleX(p.x) + tension * (scaleX(next.x) - scaleX(prev.x)) / 2;
+                      const cp1y = scaleY(p.y) + tension * (scaleY(next.y) - scaleY(prev.y)) / 2;
+                      const cp2x = scaleX(next.x) - tension * (scaleX(afterNext.x) - scaleX(p.x)) / 2;
+                      const cp2y = scaleY(next.y) - tension * (scaleY(afterNext.y) - scaleY(p.y)) / 2;
                       // opacity ramps from ~0.15 at oldest to ~0.85 just before head
                       const t = (i + 1) / (n - 1);
                       const segOpacity = 0.15 + 0.7 * t;
                       const sw = isHovered ? 2.8 : 1.8 + t * 0.6; // also tapers width
                       return (
-                        <line key={i}
-                          x1={scaleX(p.x)} y1={scaleY(p.y)}
-                          x2={scaleX(next.x)} y2={scaleY(next.y)}
-                          stroke={ticker.color} strokeWidth={sw}
+                        <path key={i}
+                          d={`M${scaleX(p.x)},${scaleY(p.y)} C${cp1x},${cp1y} ${cp2x},${cp2y} ${scaleX(next.x)},${scaleY(next.y)}`}
+                          fill="none" stroke={ticker.color} strokeWidth={sw}
                           strokeLinecap="round" opacity={segOpacity}
                         />
                       );
