@@ -881,7 +881,7 @@ export default function GoogleSheets() {
                           <span className="text-[10px] font-mono opacity-40 flex-shrink-0 mt-px">▸</span>
                           <p className="text-[10px] leading-[1.5] opacity-75">
                             {evt.date && (
-                              <span className="font-mono opacity-50 mr-1.5" style={{ color: "var(--terminal-cyan)" }}>[{evt.date}]</span>
+                              <span className="inline-block font-mono font-bold text-[9px] px-1 py-px rounded mr-1.5 align-middle" style={{ background: "var(--terminal-cyan)", color: "var(--terminal-bg)", opacity: 0.9 }}>{evt.date}</span>
                             )}
                             {evt.description}
                           </p>
