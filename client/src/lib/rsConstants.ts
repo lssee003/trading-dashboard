@@ -22,5 +22,5 @@ export const BENCHMARK_OPTIONS = [
   { label: "QQQ", value: "QQQ" },
 ] as const;
 
-export const CATEGORY_FILTERS = ["All", "Index", "Sector", "Industry Group", "Stock"] as const;
+export const CATEGORY_FILTERS = ["All", "Sector", "Industry Group", "Index", "Stock"] as const;
 export type CategoryFilter = typeof CATEGORY_FILTERS[number];

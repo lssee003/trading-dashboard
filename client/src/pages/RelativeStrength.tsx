@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useCallback } from "react";
 import type { RSResponse, RSTickerData } from "@shared/schema";
 import { RSHistogram } from "../components/RSHistogram";
+import { RRGChart } from "../components/RRGChart";
+import { computeRRGData } from "@/lib/rrg";
 import { useTheme } from "@/hooks/useTheme";
 import { Link } from "wouter";
 import {
   RefreshCw, Search, Sun, Moon, X, Plus, Download,
-  ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity, Table,
+  ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity, Table, Orbit,
 } from "lucide-react";
 import {
   LOOKBACK_OPTIONS,
@@ -56,6 +58,7 @@ export default function RelativeStrength() {
   const [tickerInput, setTickerInput] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("rsVsBenchmark");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [viewMode, setViewMode] = useState<"table" | "rrg">("table");
 
   // Build query string
   const extraParam = extraTickers.length > 0 ? extraTickers.join(",") : "";
@@ -100,6 +103,15 @@ export default function RelativeStrength() {
     }
     return map;
   }, [data]);
+
+  // RRG data (computed from tickers when in RRG view)
+  const rrgData = useMemo(() => {
+    if (!data?.tickers || viewMode !== "rrg") return [];
+    const tickers = categoryFilter !== "All"
+      ? data.tickers.filter((t) => t.category === categoryFilter)
+      : data.tickers;
+    return computeRRGData(tickers, lookback);
+  }, [data, viewMode, categoryFilter, lookback]);
 
   // Filter + sort
   const filteredData = useMemo(() => {
@@ -320,6 +332,59 @@ export default function RelativeStrength() {
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
             <div className="flex flex-wrap items-center gap-3">
+              {/* View toggle — far left. RRG is a standalone button so box-shadow isn't clipped. */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>View</span>
+                <div className="flex items-center gap-1">
+                  {/* Table button */}
+                  <button
+                    onClick={() => setViewMode("table")}
+                    className="px-2 py-1 text-[11px] font-medium transition-all flex items-center gap-1 rounded"
+                    style={{
+                      background: viewMode === "table" ? "var(--terminal-blue)" : "transparent",
+                      color: viewMode === "table" ? "#fff" : "var(--terminal-dim)",
+                      border: "1px solid var(--terminal-border)",
+                    }}
+                    data-testid="view-table"
+                  >
+                    <Table className="w-3 h-3" />
+                    Table
+                  </button>
+
+                  {/* RRG button — standalone so glow box-shadow is never clipped */}
+                  <button
+                    onClick={() => setViewMode("rrg")}
+                    title="View Relative Rotation Graph"
+                    className="px-2 py-1 text-[11px] font-medium flex items-center gap-1 rounded"
+                    style={{
+                      background: viewMode === "rrg" ? "#0ea5e9" : "transparent",
+                      color: viewMode === "rrg" ? "#fff" : "#38bdf8",
+                      border: viewMode === "rrg" ? "1px solid #0ea5e9" : "1px solid #38bdf8",
+                      boxShadow: viewMode === "table"
+                        ? "0 0 12px 3px rgba(56,189,248,0.7), 0 0 4px 1px rgba(14,165,233,1)"
+                        : "none",
+                      transition: "box-shadow 0.2s, background 0.2s, filter 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (viewMode === "table") {
+                        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 20px 5px rgba(56,189,248,0.9), 0 0 6px 2px rgba(14,165,233,1)";
+                        (e.currentTarget as HTMLElement).style.filter = "brightness(1.25)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.filter = "";
+                      (e.currentTarget as HTMLElement).style.boxShadow = viewMode === "table"
+                        ? "0 0 12px 3px rgba(56,189,248,0.7), 0 0 4px 1px rgba(14,165,233,1)"
+                        : "none";
+                    }}
+                    data-testid="view-rrg"
+                  >
+                    <Orbit className="w-3 h-3" />
+                    RRG
+                  </button>
+                </div>
+              </div>
+
               {/* Benchmark selector */}
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Bench</span>
@@ -471,7 +536,7 @@ export default function RelativeStrength() {
           </div>
 
           {/* ─── Leaders / Laggards Summary ─── */}
-          {data && !isLoading && (
+          {data && !isLoading && viewMode === "table" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Leaders */}
               <div
@@ -563,7 +628,10 @@ export default function RelativeStrength() {
             </div>
           )}
 
-          {/* ─── Data Table ─── */}
+          {/* ─── RRG Chart or Data Table ─── */}
+          {viewMode === "rrg" && data && !isLoading ? (
+            <RRGChart data={rrgData} benchmark={benchmark} lookback={lookback} />
+          ) : (
           <div
             className="rounded-lg border overflow-hidden"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
@@ -695,6 +763,7 @@ export default function RelativeStrength() {
               </div>
             )}
           </div>
+          )}
         </div>
       </main>
 
