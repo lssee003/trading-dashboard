@@ -8,7 +8,7 @@ import { ScoreBreakdown } from "../components/ScoreBreakdown";
 import { AlertBanner } from "../components/AlertBanner";
 import { AnalysisPanel } from "../components/AnalysisPanel";
 import { DashboardSkeleton } from "../components/DashboardSkeleton";
-import { RefreshCw, Activity, Sun, Moon, BarChart3 } from "lucide-react";
+import { RefreshCw, Activity, Sun, Moon, BarChart3, Table } from "lucide-react";
 import { Link } from "wouter";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -116,6 +116,16 @@ export default function Dashboard() {
             >
               <BarChart3 className="w-3.5 h-3.5" />
               <span className="font-bold tracking-wide">RELATIVE STRENGTH</span>
+            </Link>
+
+            <Link
+              href="/market-breadth"
+              className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
+              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}
+              data-testid="link-market-breadth"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span className="font-bold tracking-wide">MARKET BREADTH</span>
             </Link>
 
             {/* Status */}
