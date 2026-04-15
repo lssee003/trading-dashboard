@@ -6,7 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Link } from "wouter";
 import {
   RefreshCw, Search, Sun, Moon, X, Plus, Download,
-  ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity,
+  ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity, Table,
 } from "lucide-react";
 import {
   LOOKBACK_OPTIONS,
@@ -256,6 +256,16 @@ export default function RelativeStrength() {
               <BarChart3 className="w-3.5 h-3.5" />
               <span className="font-bold tracking-wide">RELATIVE STRENGTH</span>
             </div>
+
+            <Link
+              href="/market-breadth"
+              className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
+              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}
+              data-testid="link-market-breadth"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span className="font-bold tracking-wide">MARKET BREADTH</span>
+            </Link>
 
             {/* Status */}
             <div className="flex items-center gap-1.5">
