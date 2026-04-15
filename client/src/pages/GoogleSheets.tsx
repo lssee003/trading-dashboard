@@ -418,29 +418,29 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     .filter((r) => r.up4 >= 300);
   if (thrustDays.length > 0) {
     const biggest = thrustDays.reduce((a, b) => (a.up4 > b.up4 ? a : b));
-    // Back-to-back thrusts (check first so we can skip the single-day event if superseded)
-    const consecutiveThrusts = thrustDays.filter((d) => d.idx <= 4).length;
-    if (consecutiveThrusts >= 2) {
+    if (biggest.up4 >= 800) {
       significantEvents.push({
         rowIndex: biggest.idx,
         date: getRowDate(validRows[biggest.idx]),
+        description: `Massive breadth thrust — ${biggest.up4.toLocaleString()} stocks up 4%+ in a single day. This is a major "market break thrust" signaling institutional buying. Market likely continues higher for 2-5 days.`,
+      });
+    } else if (biggest.up4 >= 300) {
+      significantEvents.push({
+        rowIndex: biggest.idx,
+        date: getRowDate(validRows[biggest.idx]),
+        description: `Buying thrust day — ${biggest.up4.toLocaleString()} stocks up 4%+. Above-average buying pressure indicates institutional accumulation.`,
+      });
+    }
+    // Back-to-back thrusts
+    const consecutiveThrusts = thrustDays.filter(
+      (d) => d.idx <= 4,
+    ).length;
+    if (consecutiveThrusts >= 2) {
+      significantEvents.push({
+        rowIndex: 0,
+        date: getRowDate(validRows[0]),
         description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — sustained breadth thrust confirms a sustainable rally, not just a dead-cat bounce.`,
       });
-    } else {
-      // Single-day thrust — only show if no consecutive pattern (avoid duplicate dates)
-      if (biggest.up4 >= 800) {
-        significantEvents.push({
-          rowIndex: biggest.idx,
-          date: getRowDate(validRows[biggest.idx]),
-          description: `Massive breadth thrust — ${biggest.up4.toLocaleString()} stocks up 4%+ in a single day. This is a major "market break thrust" signaling institutional buying. Market likely continues higher for 2-5 days.`,
-        });
-      } else if (biggest.up4 >= 300) {
-        significantEvents.push({
-          rowIndex: biggest.idx,
-          date: getRowDate(validRows[biggest.idx]),
-          description: `Buying thrust day — ${biggest.up4.toLocaleString()} stocks up 4%+. Above-average buying pressure indicates institutional accumulation.`,
-        });
-      }
     }
   }
 
@@ -617,14 +617,24 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     }
   }
 
-  // Sort events newest-first (lower rowIndex = more recent in newest-first sheet)
+  // Sort newest-first, then merge multiple events on the same date into one entry
   significantEvents.sort((a, b) => a.rowIndex - b.rowIndex);
+  const mergedEvents: SignificantEvent[] = [];
+  for (const evt of significantEvents) {
+    const prev = mergedEvents[mergedEvents.length - 1];
+    if (prev && prev.rowIndex === evt.rowIndex) {
+      prev.description += " Additionally, " + evt.description.charAt(0).toLowerCase() + evt.description.slice(1);
+    } else {
+      mergedEvents.push({ ...evt });
+    }
+  }
+  const deduplicatedEvents = mergedEvents;
 
   return {
     regime: { signal: regimeSignal, label: regimeLabel },
     primaryTrend,
     keySignals,
-    significantEvents,
+    significantEvents: deduplicatedEvents,
     assessment: assessParts.join(" "),
     stance,
   };
