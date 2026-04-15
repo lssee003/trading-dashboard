@@ -163,7 +163,7 @@ function BurstRow({ burst }: { burst: BurstData }) {
             className="font-medium whitespace-nowrap transition-all duration-300"
             style={{ color }}
           >
-            {d.ratio.toFixed(1)}x
+            {d.ratio.toFixed(2)}x
           </span>
           <span className="flex-shrink-0" style={{ color }}>
             {d.ratio >= 1.0 ? "↑" : "↓"}
