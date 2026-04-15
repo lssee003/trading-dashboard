@@ -611,6 +611,9 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     }
   }
 
+  // Sort events newest-first (lower rowIndex = more recent in newest-first sheet)
+  significantEvents.sort((a, b) => a.rowIndex - b.rowIndex);
+
   return {
     regime: { signal: regimeSignal, label: regimeLabel },
     primaryTrend,
