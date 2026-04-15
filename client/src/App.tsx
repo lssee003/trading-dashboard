@@ -9,6 +9,7 @@ import { TickerBar } from "@/components/TickerBar";
 import type { DashboardData } from "@shared/schema";
 import Dashboard from "@/pages/Dashboard";
 import RelativeStrength from "@/pages/RelativeStrength";
+import GoogleSheets from "@/pages/GoogleSheets";
 import NotFound from "@/pages/not-found";
 
 /** Persistent ticker strip — fetches its own data so it stays alive across all routes */
@@ -28,6 +29,7 @@ function AppRouter() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/relative-strength" component={RelativeStrength} />
+      <Route path="/market-breadth" component={GoogleSheets} />
       <Route component={NotFound} />
     </Switch>
   );
