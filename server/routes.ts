@@ -3,6 +3,7 @@ import type { Server } from "http";
 import { fetchDashboardData } from "./marketData";
 import { fetchRelativeStrength } from "./rsData";
 import { fetchBreadthMetrics } from "./breadthData";
+import { fetchGoogleSheetData } from "./sheetsData";
 
 const DEFAULT_RS_SYMBOLS = [
   "SPY","FXI","GXC","FFTY","XHB","RSPT","CIBR","PBJ","XRT","RSPS",
@@ -36,7 +37,7 @@ export async function registerRoutes(server: Server, app: Express) {
       const extra = req.query.extra ? (req.query.extra as string).split(",").map(s => s.trim().toUpperCase()).filter(Boolean) : [];
 
       // Combine default + extra, deduplicate, remove benchmark from list
-      const allSymbols = [...new Set([...DEFAULT_RS_SYMBOLS, ...extra])].filter(s => s !== benchmark);
+      const allSymbols = Array.from(new Set([...DEFAULT_RS_SYMBOLS, ...extra])).filter(s => s !== benchmark);
 
       const data = await fetchRelativeStrength(allSymbols, benchmark, lookback);
       res.json(data);
@@ -44,6 +45,20 @@ export async function registerRoutes(server: Server, app: Express) {
       console.error("RS API error:", error);
       res.status(500).json({
         error: "Failed to fetch relative strength data",
+        message: (error as Error).message,
+      });
+    }
+  });
+
+  // Google Sheets endpoint
+  app.get("/api/sheets", async (_req, res) => {
+    try {
+      const data = await fetchGoogleSheetData();
+      res.json(data);
+    } catch (error) {
+      console.error("Sheets API error:", error);
+      res.status(500).json({
+        error: "Failed to fetch Google Sheets data",
         message: (error as Error).message,
       });
     }

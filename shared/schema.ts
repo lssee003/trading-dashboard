@@ -146,3 +146,24 @@ export const BreadthMetricsSchema = z.object({
 });
 
 export type BreadthMetrics = z.infer<typeof BreadthMetricsSchema>;
+// ─── Google Sheets Types ───
+
+export const SheetsCellSchema = z.object({
+  value: z.union([z.string(), z.number(), z.null()]),
+  colorType: z.enum(["green", "red", "yellow", "blue"]).optional(),
+  intensity: z.number().optional(), // 0-1 opacity strength
+  backgroundColor: z.string().optional(),
+  textColor: z.string().optional(),
+});
+
+export type SheetsCell = z.infer<typeof SheetsCellSchema>;
+
+export const SheetsDataSchema = z.object({
+  headers: z.array(z.string()),
+  rows: z.array(z.array(SheetsCellSchema)),
+  lastUpdated: z.string(),
+  sheetTitle: z.string(),
+  groupHeaders: z.array(z.string()).optional(),
+});
+
+export type SheetsData = z.infer<typeof SheetsDataSchema>;

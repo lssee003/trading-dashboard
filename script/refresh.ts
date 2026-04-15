@@ -9,6 +9,7 @@ import { writeFileSync, mkdirSync } from "fs";
 import path from "path";
 import { fetchDashboardData } from "../server/marketData";
 import { fetchRelativeStrength } from "../server/rsData";
+import { fetchGoogleSheetData } from "../server/sheetsData";
 
 const OUT_DIR = path.resolve("client/public/data");
 
@@ -35,6 +36,23 @@ async function main() {
   const rs = await fetchRelativeStrength(RS_SYMBOLS, "SPY", 25);
   writeFileSync(path.join(OUT_DIR, "rs.json"), JSON.stringify(rs));
   console.log(`RS done (${((Date.now() - t1) / 1000).toFixed(1)}s)`);
+
+  console.log("=== Refresh: fetching Google Sheets data ===");
+  const t2 = Date.now();
+  try {
+    const sheets = await fetchGoogleSheetData();
+    writeFileSync(path.join(OUT_DIR, "sheets.json"), JSON.stringify(sheets));
+    console.log(`Google Sheets done (${((Date.now() - t2) / 1000).toFixed(1)}s)`);
+  } catch (error) {
+    console.error("Google Sheets fetch failed (continuing):", error);
+    // Write empty data so the page doesn't crash
+    writeFileSync(path.join(OUT_DIR, "sheets.json"), JSON.stringify({
+      headers: [],
+      rows: [],
+      lastUpdated: new Date().toISOString(),
+      sheetTitle: "Error loading sheet",
+    }));
+  }
 
   console.log(`=== Refresh complete in ${((Date.now() - t0) / 1000).toFixed(1)}s ===`);
 }
