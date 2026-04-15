@@ -151,6 +151,7 @@ interface KeySignal {
 
 interface SignificantEvent {
   rowIndex: number;
+  date?: string;
   description: string;
 }
 
@@ -190,6 +191,15 @@ function rowVals(row: SheetsCell[]) {
     t2108: g(COL.T2108) ?? 50,
     sp: g(COL.SP500) ?? 0,
   };
+}
+
+/** Format a row's date cell (string like "4/14/2026") into "Apr 14" */
+function getRowDate(row: SheetsCell[]): string | undefined {
+  const v = row[COL.DATE]?.value;
+  if (!v && v !== 0) return undefined;
+  const d = new Date(typeof v === "number" ? (v - 25569) * 86400000 : String(v));
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | null {
@@ -386,6 +396,7 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     if (cur.up25q > cur.down25q && prev.up25q <= prev.down25q) {
       significantEvents.push({
         rowIndex: i,
+        date: getRowDate(validRows[i]),
         description: `Primary Indicator Flip to BULLISH — quarterly up (${cur.up25q.toLocaleString()}) exceeded down (${cur.down25q.toLocaleString()}) for the first time. This signals the start of a bullish regime where breakouts and long swing trades have follow-through.`,
       });
     }
@@ -393,6 +404,7 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     if (cur.up25q <= cur.down25q && prev.up25q > prev.down25q) {
       significantEvents.push({
         rowIndex: i,
+        date: getRowDate(validRows[i]),
         description: `Primary Indicator Flip to BEARISH — quarterly down (${cur.down25q.toLocaleString()}) overtook up (${cur.up25q.toLocaleString()}). Long setups are now higher risk; shorting becomes the more profitable strategy.`,
       });
     }
@@ -407,11 +419,13 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     if (biggest.up4 >= 800) {
       significantEvents.push({
         rowIndex: biggest.idx,
+        date: getRowDate(validRows[biggest.idx]),
         description: `Massive breadth thrust — ${biggest.up4.toLocaleString()} stocks up 4%+ in a single day. This is a major "market break thrust" signaling institutional buying. Market likely continues higher for 2-5 days.`,
       });
     } else if (biggest.up4 >= 300) {
       significantEvents.push({
         rowIndex: biggest.idx,
+        date: getRowDate(validRows[biggest.idx]),
         description: `Buying thrust day — ${biggest.up4.toLocaleString()} stocks up 4%+. Above-average buying pressure indicates institutional accumulation.`,
       });
     }
@@ -422,6 +436,7 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     if (consecutiveThrusts >= 2) {
       significantEvents.push({
         rowIndex: 0,
+        date: getRowDate(validRows[0]),
         description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — sustained breadth thrust confirms a sustainable rally, not just a dead-cat bounce.`,
       });
     }
@@ -435,6 +450,7 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     const worst = capitulationDays.reduce((a, b) => (a.down4 > b.down4 ? a : b));
     significantEvents.push({
       rowIndex: worst.idx,
+      date: getRowDate(validRows[worst.idx]),
       description: `Capitulation day — ${worst.down4.toLocaleString()} stocks down 4%+ ("knockout punch"). Extreme selling like this paradoxically often precedes a market turn. Watch for breadth thrust to confirm a bottom.`,
     });
   }
@@ -444,8 +460,10 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   if (oversoldDays.length > 0) {
     const deepest = oversoldDays.reduce((a, b) => (a.t2108 < b.t2108 ? a : b));
     if (deepest.t2108 < 15) {
+      const deepestIdx = recent.indexOf(deepest);
       significantEvents.push({
-        rowIndex: recent.indexOf(deepest),
+        rowIndex: deepestIdx,
+        date: getRowDate(validRows[deepestIdx]),
         description: `T2108 hit ${deepest.t2108.toFixed(1)}% — deep oversold zone where buyers historically step in. This is a classic "buy the dip" setup when combined with a breadth thrust.`,
       });
     }
@@ -861,7 +879,12 @@ export default function GoogleSheets() {
                       {breadthAnalysis.significantEvents.map((evt, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <span className="text-[10px] font-mono opacity-40 flex-shrink-0 mt-px">▸</span>
-                          <p className="text-[10px] leading-[1.5] opacity-75">{evt.description}</p>
+                          <p className="text-[10px] leading-[1.5] opacity-75">
+                            {evt.date && (
+                              <span className="font-mono opacity-50 mr-1.5" style={{ color: "var(--terminal-cyan)" }}>[{evt.date}]</span>
+                            )}
+                            {evt.description}
+                          </p>
                         </div>
                       ))}
                     </div>
