@@ -353,7 +353,7 @@ export default function RelativeStrength() {
 
                   {/* RRG button — standalone so glow box-shadow is never clipped */}
                   <button
-                    onClick={() => setViewMode("rrg")}
+                    onClick={() => { setViewMode("rrg"); setBenchmark("SPY"); setLookback(10); setCategoryFilter("Sector"); }}
                     title="View Relative Rotation Graph"
                     className="px-2 py-1 text-[11px] font-medium flex items-center gap-1 rounded"
                     style={{

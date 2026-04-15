@@ -9,6 +9,8 @@ interface RRGChartProps {
 }
 
 const PADDING = { top: 44, right: 268, bottom: 52, left: 58 };
+const SIDEBAR_WIDTH = PADDING.right - 10; // 258px
+const RIGHT_PAD_COLLAPSED = 20;
 const MIN_CHART_HEIGHT = 560;
 
 // ─── Strict 10% buffer, pure data-driven bounds ───
@@ -57,6 +59,7 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
   const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hiddenSymbols, setHiddenSymbols] = useState<Set<string>>(new Set());
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -68,7 +71,14 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
     return () => ro.disconnect();
   }, []);
 
-  const chartW = Math.max(width - PADDING.left - PADDING.right, 100);
+  const isMobile = width < 640;
+  // On mobile, sidebar floats as overlay so chart always uses full width.
+  // On desktop, sidebar pushes chart when open.
+  const sidebarAsOverlay = isMobile && sidebarOpen;
+  const rightPad = sidebarOpen && !sidebarAsOverlay ? PADDING.right : RIGHT_PAD_COLLAPSED;
+  const svgWidth = sidebarOpen && !sidebarAsOverlay ? width - (SIDEBAR_WIDTH - 10) : width;
+
+  const chartW = Math.max(width - PADDING.left - rightPad, 100);
   const chartH = MIN_CHART_HEIGHT - PADDING.top - PADDING.bottom;
 
   const visibleData = useMemo(
@@ -179,15 +189,38 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
           </span>
           <span className="text-[12px] font-bold ml-1.5" style={{ color: "var(--terminal-cyan)" }}>(RRG)</span>
         </div>
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-          vs {benchmark} · {lookback}D window
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            vs {benchmark} · {lookback}D window
+          </span>
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="flex items-center justify-center rounded"
+            style={{
+              width: 22, height: 22,
+              background: "var(--overlay-subtle)",
+              border: "1px solid var(--terminal-border)",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+            title={sidebarOpen ? "Hide sectors panel" : "Show sectors panel"}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              {sidebarOpen ? (
+                <path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              ) : (
+                <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div className="flex">
+      <div className="flex relative">
         {/* ─── Chart ─── */}
         <div className="flex-1 relative" style={{ minHeight: MIN_CHART_HEIGHT }}>
-          <svg width={width - (PADDING.right - 10)} height={MIN_CHART_HEIGHT} style={{ display: "block" }}>
+          <svg width={svgWidth} height={MIN_CHART_HEIGHT} style={{ display: "block" }}>
             <defs>
               {/* Radial gradients for each quadrant — origin at 100/100 crosshair */}
               {(["improving", "leading", "lagging", "weakening"] as Quadrant[]).map((q) => (
@@ -398,12 +431,23 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
         </div>
 
         {/* ─── Right Sidebar ─── */}
+        {sidebarOpen && (
         <div
           className="flex-shrink-0 border-l overflow-y-auto"
           style={{
-            width: PADDING.right - 10,
+            width: SIDEBAR_WIDTH,
             borderColor: "var(--terminal-border)",
             maxHeight: MIN_CHART_HEIGHT + 44,
+            ...(sidebarAsOverlay ? {
+              position: "absolute",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: 20,
+              background: "var(--terminal-surface)",
+              boxShadow: "-4px 0 16px rgba(0,0,0,0.4)",
+              maxHeight: "100%",
+            } : {}),
           }}
         >
           {/* Sidebar header */}
@@ -491,6 +535,7 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
             })}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
