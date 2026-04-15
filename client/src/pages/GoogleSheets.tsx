@@ -142,193 +142,462 @@ function computeCellColor(row: SheetsCell[], colIdx: number, theme: string): Cel
 }
 
 /* ── Breadth Terminal Analysis ── */
+type SignalType = "bullish" | "bearish" | "caution";
+interface KeySignal {
+  type: SignalType;
+  label: string;
+  detail: string;
+}
+
+interface SignificantEvent {
+  rowIndex: number;
+  description: string;
+}
+
 interface BreadthAnalysis {
   regime: { signal: "GREEN" | "AMBER" | "RED"; label: string };
-  narrative: string;
+  primaryTrend: string;
+  keySignals: KeySignal[];
+  significantEvents: SignificantEvent[];
+  assessment: string;
   stance: string;
 }
 
-function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | null {
-  // Find the first valid data row (most recent)
-  const latest = dataRows.find(
+/** Extract validated data rows (numeric up4 in col 1, enough columns) */
+function getValidRows(dataRows: SheetsCell[][]): SheetsCell[][] {
+  return dataRows.filter(
     (row) => row.length > COL.SP500 && typeof row[COL.UP_4_TODAY]?.value === "number",
   );
-  if (!latest) return null;
+}
 
-  // Also get a few recent rows for trend context
-  const recentRows = dataRows
-    .filter((row) => row.length > COL.SP500 && typeof row[COL.UP_4_TODAY]?.value === "number")
-    .slice(0, 5);
+/** Helper: get row values as a simple object */
+function rowVals(row: SheetsCell[]) {
+  const g = (ci: number) => getNumVal(row, ci);
+  return {
+    up4: g(COL.UP_4_TODAY) ?? 0,
+    down4: g(COL.DOWN_4_TODAY) ?? 0,
+    ratio5d: g(COL.RATIO_5D) ?? 1,
+    ratio10d: g(COL.RATIO_10D) ?? 1,
+    up25q: g(COL.UP_25_QTR) ?? 0,
+    down25q: g(COL.DOWN_25_QTR) ?? 0,
+    up25m: g(COL.UP_25_MTH) ?? 0,
+    down25m: g(COL.DOWN_25_MTH) ?? 0,
+    up50m: g(COL.UP_50_MTH) ?? 0,
+    down50m: g(COL.DOWN_50_MTH) ?? 0,
+    up13: g(COL.UP_13_34D) ?? 0,
+    down13: g(COL.DOWN_13_34D) ?? 0,
+    worden: g(COL.WORDEN) ?? 0,
+    t2108: g(COL.T2108) ?? 50,
+    sp: g(COL.SP500) ?? 0,
+  };
+}
 
-  const g = (ci: number) => getNumVal(latest, ci);
-  const up4 = g(COL.UP_4_TODAY) ?? 0;
-  const down4 = g(COL.DOWN_4_TODAY) ?? 0;
-  const ratio5d = g(COL.RATIO_5D) ?? 1;
-  const ratio10d = g(COL.RATIO_10D) ?? 1;
-  const up25q = g(COL.UP_25_QTR) ?? 0;
-  const down25q = g(COL.DOWN_25_QTR) ?? 0;
-  const up25m = g(COL.UP_25_MTH) ?? 0;
-  const down25m = g(COL.DOWN_25_MTH) ?? 0;
-  const up50m = g(COL.UP_50_MTH) ?? 0;
-  const down50m = g(COL.DOWN_50_MTH) ?? 0;
-  const up13 = g(COL.UP_13_34D) ?? 0;
-  const down13 = g(COL.DOWN_13_34D) ?? 0;
-  const t2108 = g(COL.T2108) ?? 50;
-  const sp = g(COL.SP500) ?? 0;
+function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | null {
+  const validRows = getValidRows(dataRows);
+  if (validRows.length === 0) return null;
 
-  // Compute quarterly net and monthly net
+  const latest = rowVals(validRows[0]);
+  // Get up to 20 recent rows for pattern detection
+  const recent = validRows.slice(0, 20).map(rowVals);
+
+  const {
+    up4, down4, ratio5d, ratio10d, up25q, down25q, up25m, down25m,
+    up50m, down50m, up13, down13, worden, t2108, sp,
+  } = latest;
+
   const qtrBullish = up25q > down25q;
   const mthBullish = up25m > down25m;
   const intBullish = up13 > down13;
 
-  // ── Regime ──
+  // ══════════════════════════════════════════════════
+  // 1. REGIME
+  // ══════════════════════════════════════════════════
   let regimeSignal: "GREEN" | "AMBER" | "RED";
   let regimeLabel: string;
 
   if (qtrBullish && ratio10d >= 1 && t2108 > 20) {
-    regimeSignal = "GREEN";
-    regimeLabel = "UPTREND";
+    regimeSignal = "GREEN"; regimeLabel = "UPTREND";
   } else if (!qtrBullish && ratio10d < 0.5) {
-    regimeSignal = "RED";
-    regimeLabel = "CORRECTION";
+    regimeSignal = "RED"; regimeLabel = "CORRECTION";
   } else if (!qtrBullish && !mthBullish && !intBullish) {
-    regimeSignal = "RED";
-    regimeLabel = "RISK-OFF";
+    regimeSignal = "RED"; regimeLabel = "RISK-OFF";
   } else if (qtrBullish && ratio10d >= 0.5) {
-    regimeSignal = "GREEN";
-    regimeLabel = "TRENDING";
+    regimeSignal = "GREEN"; regimeLabel = "TRENDING";
   } else {
-    regimeSignal = "AMBER";
-    regimeLabel = "CHOPPY";
+    regimeSignal = "AMBER"; regimeLabel = "CHOPPY";
   }
 
-  // ── Narrative (max 3 sentences) ──
-  const parts: string[] = [];
+  // ══════════════════════════════════════════════════
+  // 2. PRIMARY TREND DESCRIPTION
+  // ══════════════════════════════════════════════════
+  let primaryTrend: string;
+  if (qtrBullish) {
+    const margin = up25q - down25q;
+    primaryTrend = `Bullish — quarterly breadth positive (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net +${margin.toLocaleString()}). Long swing trades and breakouts are more likely to have follow-through.`;
+  } else {
+    const margin = down25q - up25q;
+    primaryTrend = `Bearish — quarterly breadth negative (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net −${margin.toLocaleString()}). Trading long is riskier; breakouts are more likely to fail.`;
+  }
 
-  if (regimeSignal === "GREEN") {
-    // Sentence 1: primary trend
-    if (qtrBullish && mthBullish) {
-      parts.push(
-        `Primary trend is bullish with quarterly breadth positive (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down) and monthly breadth confirming.`,
+  // ══════════════════════════════════════════════════
+  // 3. KEY SIGNALS
+  // ══════════════════════════════════════════════════
+  const keySignals: KeySignal[] = [];
+
+  // Daily pressure
+  if (up4 >= 300) {
+    keySignals.push({
+      type: "bullish",
+      label: `${up4.toLocaleString()} stocks up 4%+ today`,
+      detail: "Above-average buying pressure — institutional accumulation day.",
+    });
+  }
+  if (down4 > 299) {
+    keySignals.push({
+      type: "bearish",
+      label: `${down4.toLocaleString()} stocks down 4%+ today`,
+      detail: down4 >= 600
+        ? "Extreme selling / \"knockout punch\" — capitulation day, paradoxically often precedes a turn."
+        : "Above-average selling pressure — institutional distribution day.",
+    });
+  }
+
+  // Ratios
+  if (ratio10d >= 2) {
+    keySignals.push({
+      type: "bullish",
+      label: `10-day ratio at ${ratio10d.toFixed(2)}x`,
+      detail: "Buyers have clearly seized control — breakouts have follow-through.",
+    });
+  } else if (ratio10d < 0.5) {
+    keySignals.push({
+      type: "bearish",
+      label: `10-day ratio at ${ratio10d.toFixed(2)}x`,
+      detail: "Sellers dominating — breakdowns accelerating, avoid long entries.",
+    });
+  }
+  if (ratio5d > 2) {
+    keySignals.push({
+      type: "bullish",
+      label: `5-day ratio at ${ratio5d.toFixed(2)}x`,
+      detail: "Short-term buying burst — likely to continue higher for 2-5 days.",
+    });
+  } else if (ratio5d < 0.5) {
+    keySignals.push({
+      type: "bearish",
+      label: `5-day ratio at ${ratio5d.toFixed(2)}x`,
+      detail: "Short-term selling dominant — avoid catching falling knives.",
+    });
+  }
+
+  // Monthly breadth
+  if (mthBullish) {
+    keySignals.push({
+      type: "bullish",
+      label: `Monthly breadth positive (${up25m} up vs ${down25m} down)`,
+      detail: "Medium-term participation expanding — rally has legs.",
+    });
+  } else if (up25m < down25m) {
+    keySignals.push({
+      type: "bearish",
+      label: `Monthly breadth negative (${up25m} up vs ${down25m} down)`,
+      detail: "Medium-term selling pressure — rallies lack follow-through.",
+    });
+  }
+
+  // Intermediate breadth
+  if (intBullish) {
+    keySignals.push({
+      type: "bullish",
+      label: `Intermediate breadth positive (${up13.toLocaleString()} vs ${down13.toLocaleString()})`,
+      detail: "Broad participation across 34-day window supports the move.",
+    });
+  } else if (up13 < down13) {
+    keySignals.push({
+      type: "bearish",
+      label: `Intermediate breadth negative (${up13.toLocaleString()} vs ${down13.toLocaleString()})`,
+      detail: "Damage is broad-based across the intermediate timeframe.",
+    });
+  }
+
+  // Red Hot / exhaustion
+  if (up50m >= 20) {
+    keySignals.push({
+      type: "caution",
+      label: `Red Hot indicator at ${up50m} (≥20 threshold)`,
+      detail: "Market is overextended — a short-term correction or pullback is likely within 2-5 days. Do not chase extended moves.",
+    });
+  } else if (up50m < 2) {
+    keySignals.push({
+      type: "bullish",
+      label: `Red Hot indicator at ${up50m} (<2)`,
+      detail: "Extreme low reading — froth has been washed out, fresh setups are safer.",
+    });
+  }
+
+  // Capitulation (down 50% month)
+  if (down50m > 19) {
+    keySignals.push({
+      type: "bullish",
+      label: `${down50m} stocks down 50%+ in a month`,
+      detail: "Capitulation selling — extreme bearishness often precedes a reflex bounce.",
+    });
+  }
+
+  // T2108
+  if (t2108 < 20) {
+    keySignals.push({
+      type: "bullish",
+      label: `T2108 at ${t2108.toFixed(1)}% (oversold <20)`,
+      detail: t2108 < 15
+        ? "Deeply oversold — this is the zone where buyers historically step in for a bounce. Watch for breadth thrust to confirm."
+        : "Oversold territory — a reflex bounce is probable, but not yet confirmed.",
+    });
+  } else if (t2108 > 70) {
+    keySignals.push({
+      type: "caution",
+      label: `T2108 at ${t2108.toFixed(1)}% (overbought >70)`,
+      detail: t2108 > 80
+        ? "Extremely overbought — pullback is likely, scale back long positions and tighten stops."
+        : "Reaching overbought zone — become cautious, a pullback is approaching.",
+    });
+  }
+
+  // Worden universe
+  if (worden > 7000) {
+    keySignals.push({
+      type: "caution",
+      label: `Worden universe at ${worden.toLocaleString()} (elevated)`,
+      detail: "High stock universe count indicates elevated supply — long-term bearish headwind from excess listings/IPOs.",
+    });
+  }
+
+  // ══════════════════════════════════════════════════
+  // 4. SIGNIFICANT EVENTS (scan recent rows)
+  // ══════════════════════════════════════════════════
+  const significantEvents: SignificantEvent[] = [];
+
+  // Detect primary indicator flip (quarterly up crosses above/below quarterly down)
+  for (let i = 0; i < recent.length - 1; i++) {
+    const cur = recent[i];
+    const prev = recent[i + 1];
+    // Flip to bullish
+    if (cur.up25q > cur.down25q && prev.up25q <= prev.down25q) {
+      significantEvents.push({
+        rowIndex: i,
+        description: `Primary Indicator Flip to BULLISH — quarterly up (${cur.up25q.toLocaleString()}) exceeded down (${cur.down25q.toLocaleString()}) for the first time. This signals the start of a bullish regime where breakouts and long swing trades have follow-through.`,
+      });
+    }
+    // Flip to bearish
+    if (cur.up25q <= cur.down25q && prev.up25q > prev.down25q) {
+      significantEvents.push({
+        rowIndex: i,
+        description: `Primary Indicator Flip to BEARISH — quarterly down (${cur.down25q.toLocaleString()}) overtook up (${cur.up25q.toLocaleString()}). Long setups are now higher risk; shorting becomes the more profitable strategy.`,
+      });
+    }
+  }
+
+  // Detect breadth thrusts (300+ up 4% days)
+  const thrustDays = recent
+    .map((r, i) => ({ ...r, idx: i }))
+    .filter((r) => r.up4 >= 300);
+  if (thrustDays.length > 0) {
+    const biggest = thrustDays.reduce((a, b) => (a.up4 > b.up4 ? a : b));
+    if (biggest.up4 >= 800) {
+      significantEvents.push({
+        rowIndex: biggest.idx,
+        description: `Massive breadth thrust — ${biggest.up4.toLocaleString()} stocks up 4%+ in a single day. This is a major "market break thrust" signaling institutional buying. Market likely continues higher for 2-5 days.`,
+      });
+    } else if (biggest.up4 >= 300) {
+      significantEvents.push({
+        rowIndex: biggest.idx,
+        description: `Buying thrust day — ${biggest.up4.toLocaleString()} stocks up 4%+. Above-average buying pressure indicates institutional accumulation.`,
+      });
+    }
+    // Back-to-back thrusts
+    const consecutiveThrusts = thrustDays.filter(
+      (d) => d.idx <= 4,
+    ).length;
+    if (consecutiveThrusts >= 2) {
+      significantEvents.push({
+        rowIndex: 0,
+        description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — sustained breadth thrust confirms a sustainable rally, not just a dead-cat bounce.`,
+      });
+    }
+  }
+
+  // Detect capitulation days (600+ down 4%)
+  const capitulationDays = recent
+    .map((r, i) => ({ ...r, idx: i }))
+    .filter((r) => r.down4 >= 600);
+  if (capitulationDays.length > 0) {
+    const worst = capitulationDays.reduce((a, b) => (a.down4 > b.down4 ? a : b));
+    significantEvents.push({
+      rowIndex: worst.idx,
+      description: `Capitulation day — ${worst.down4.toLocaleString()} stocks down 4%+ ("knockout punch"). Extreme selling like this paradoxically often precedes a market turn. Watch for breadth thrust to confirm a bottom.`,
+    });
+  }
+
+  // Detect T2108 extreme oversold
+  const oversoldDays = recent.filter((r) => r.t2108 < 20);
+  if (oversoldDays.length > 0) {
+    const deepest = oversoldDays.reduce((a, b) => (a.t2108 < b.t2108 ? a : b));
+    if (deepest.t2108 < 15) {
+      significantEvents.push({
+        rowIndex: recent.indexOf(deepest),
+        description: `T2108 hit ${deepest.t2108.toFixed(1)}% — deep oversold zone where buyers historically step in. This is a classic "buy the dip" setup when combined with a breadth thrust.`,
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  // 5. ASSESSMENT (the narrative paragraph)
+  // ══════════════════════════════════════════════════
+  const assessParts: string[] = [];
+
+  // Detect conflicting signals
+  const hasBullishPrimary = qtrBullish;
+  const hasRedHot = up50m >= 20;
+  const hasOverbought = t2108 > 70;
+  const hasOversold = t2108 < 20;
+  const hasCapitulation = down50m > 19;
+  const hasBearishPrimary = !qtrBullish;
+  const hasBuyingThrust = up4 >= 300 || ratio5d > 2;
+
+  // Green Light / Yellow Light scenario (bullish primary + short-term exhaustion)
+  if (hasBullishPrimary && hasRedHot) {
+    assessParts.push(
+      `Green Light / Yellow Light — The Primary Indicator is bullish (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}), confirming a regime where breakouts work. However, the Red Hot indicator at ${up50m} (≥20) warns the market is short-term overextended.`,
+    );
+    assessParts.push(
+      "Do not chase stocks already up 3-4 days in a row. The safest approach is to wait for a 2-3 day pullback to clear the froth, then enter fresh breakouts from tight consolidations with closer stops.",
+    );
+  }
+  // Green Light / Yellow Light (bullish primary + overbought)
+  else if (hasBullishPrimary && hasOverbought && !hasRedHot) {
+    assessParts.push(
+      `Green Light / Yellow Light — Primary trend is bullish but T2108 at ${t2108.toFixed(1)}% signals an overbought market. A pullback is likely before the next leg higher.`,
+    );
+    assessParts.push(
+      "Tighten stops on existing positions. Wait for a 2-3 day pullback before adding new exposure. Buy fresh setups only — avoid extended names.",
+    );
+  }
+  // Bearish primary + strong buying thrust (potential bottom/reversal)
+  else if (hasBearishPrimary && hasBuyingThrust) {
+    assessParts.push(
+      `Bear Market Rally Signal — The Primary Indicator remains bearish (quarterly down ${down25q.toLocaleString()} > up ${up25q.toLocaleString()}), but a strong buying thrust is underway${ratio5d > 2 ? ` with 5-day ratio at ${ratio5d.toFixed(2)}x` : ""}${up4 >= 300 ? ` and ${up4.toLocaleString()} stocks up 4%+ today` : ""}.`,
+    );
+    if (mthBullish || intBullish) {
+      assessParts.push(
+        "Monthly or intermediate breadth is turning positive ahead of quarterly — watch for the Primary Flip (quarterly up > down) to confirm a full regime change. Until then, treat this as a bear market rally: half-size positions with tight stops.",
       );
     } else {
-      parts.push(
-        `Quarterly breadth is positive (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down) — primary trend supports longs.`,
+      assessParts.push(
+        "This buying pressure could be a reflex bounce in a bearish environment. Without a Primary Flip, breakouts are still likely to fail. Trade with reduced size and short duration (3-5 days).",
       );
     }
-
-    // Sentence 2: strongest supporting signal
-    if (ratio10d >= 2) {
-      parts.push(
-        `10-day ratio at ${ratio10d.toFixed(2)}x shows strong buying dominance — breakouts have follow-through.`,
-      );
-    } else if (up4 >= 300) {
-      parts.push(
-        `${up4.toLocaleString()} stocks up 4%+ today signals a buying thrust — institutional accumulation is underway.`,
-      );
-    } else if (intBullish) {
-      parts.push(
-        `Intermediate breadth (13%/34d) is positive at ${up13.toLocaleString()} vs ${down13.toLocaleString()} — broad participation supports the rally.`,
-      );
-    } else if (t2108 > 60) {
-      parts.push(
-        `T2108 at ${t2108.toFixed(1)}% shows healthy participation above the 40-day MA.`,
-      );
-    }
-
-    // Sentence 3: caution if frothy
-    if (up50m >= 20) {
-      parts.push(
-        `Red Hot indicator at ${up50m} (${up50m >= 20 ? "≥20" : ""}) warns of overextension — scale into pullbacks rather than chasing.`,
-      );
-    } else if (t2108 > 79.99) {
-      parts.push(
-        `T2108 above 80% is overbought — expect mean reversion, tighten stops.`,
-      );
-    }
-  } else if (regimeSignal === "RED") {
-    // Sentence 1: bearish primary
-    parts.push(
-      `Primary trend is bearish with quarterly breadth negative (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down) — breakouts are unreliable.`,
+  }
+  // Bearish primary + oversold (bottom fishing)
+  else if (hasBearishPrimary && (hasOversold || hasCapitulation)) {
+    assessParts.push(
+      `Bottom Zone Alert — The Primary Indicator is bearish, but${hasOversold ? ` T2108 at ${t2108.toFixed(1)}% is in oversold territory` : ""}${hasOversold && hasCapitulation ? " and" : ""}${hasCapitulation ? ` ${down50m} stocks down 50%+ in a month signals capitulation` : ""}. Extreme pessimism like this often precedes a reflex bounce.`,
     );
-
-    // Sentence 2: strongest bearish signal
+    assessParts.push(
+      "Watch for a breadth thrust (300+ stocks up 4%+ on back-to-back days) to confirm a bottom. A 3-5 day reflex bounce is likely, but the primary trend remains down — trade the bounce with tight stops and short duration only.",
+    );
+  }
+  // Pure bearish
+  else if (regimeSignal === "RED") {
+    assessParts.push(
+      `Bearish Regime — The Primary Indicator is negative with quarterly down (${down25q.toLocaleString()}) exceeding up (${up25q.toLocaleString()}). This is the environment where long setups fail and shorting is the more profitable strategy.`,
+    );
     if (ratio10d < 0.5) {
-      parts.push(
-        `10-day ratio at ${ratio10d.toFixed(2)}x confirms selling dominance — breakdowns are accelerating.`,
+      assessParts.push(
+        `The 10-day ratio at ${ratio10d.toFixed(2)}x confirms sustained selling dominance. Preserve capital and wait for breadth improvement before considering long entries.`,
       );
-    } else if (down4 > 299) {
-      parts.push(
-        `${down4.toLocaleString()} stocks down 4%+ today signals capitulation selling — institutional distribution is heavy.`,
-      );
-    } else if (!intBullish) {
-      parts.push(
-        `Intermediate breadth (13%/34d) is negative at ${up13.toLocaleString()} vs ${down13.toLocaleString()} — damage is broad-based.`,
+    } else {
+      assessParts.push(
+        "Avoid buying breakouts in this regime — they are far more likely to fail. Focus on cash preservation or short setups.",
       );
     }
-
-    // Sentence 3: bounce potential
-    if (t2108 < 20) {
-      parts.push(
-        `T2108 at ${t2108.toFixed(1)}% is deeply oversold — watch for a 3-5 day reflex bounce but don't change bias.`,
-      );
-    } else if (down50m > 19) {
-      parts.push(
-        `${down50m} stocks down 50%+ in a month signals capitulation — a bounce is likely but the trend remains down.`,
-      );
-    }
-  } else {
-    // AMBER
-    parts.push(
-      `Market breadth is mixed — quarterly trend ${qtrBullish ? "positive" : "negative"} but short-term signals are conflicting.`,
+  }
+  // Pure bullish
+  else if (regimeSignal === "GREEN" && !hasRedHot && !hasOverbought) {
+    assessParts.push(
+      `Bullish Regime — The Primary Indicator is positive (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}) and the market is not overextended. This is the environment to be aggressively long.`,
     );
-
-    if (ratio5d > 2 && !qtrBullish) {
-      parts.push(
-        `5-day ratio at ${ratio5d.toFixed(2)}x shows a short-term buying burst against a negative primary trend — potential trend reversal forming.`,
+    if (ratio10d >= 2) {
+      assessParts.push(
+        `The 10-day ratio at ${ratio10d.toFixed(2)}x shows buyers have clearly seized control. Press breakouts near highs and add to winning positions.`,
       );
-    } else if (mthBullish && !qtrBullish) {
-      parts.push(
-        `Monthly breadth turning positive ahead of quarterly — watch for the primary flip to confirm a regime change.`,
+    } else if (intBullish && mthBullish) {
+      assessParts.push(
+        "Both monthly and intermediate breadth confirm broad participation. Buy pullbacks to support and fresh breakouts from tight consolidations.",
       );
-    } else if (qtrBullish && ratio10d < 1) {
-      parts.push(
-        `Short-term momentum fading despite positive quarterly breadth — pullback in progress, not a trend change.`,
+    } else {
+      assessParts.push(
+        "Breakouts are working with follow-through. Buy pullbacks on strength and fresh breakouts with disciplined risk management.",
       );
     }
-
-    if (up50m >= 20) {
-      parts.push(`Red Hot indicator at ${up50m} warns of near-term overextension.`);
-    } else if (t2108 < 20) {
-      parts.push(`T2108 at ${t2108.toFixed(1)}% is oversold — bounce conditions forming.`);
+  }
+  // Choppy
+  else {
+    assessParts.push(
+      `Mixed Signal Environment — Conflicting breadth signals across timeframes. Quarterly trend is ${qtrBullish ? "positive" : "negative"}, but short-term indicators diverge.`,
+    );
+    if (qtrBullish && ratio10d < 1) {
+      assessParts.push(
+        "Short-term momentum is fading despite positive quarterly breadth — this is likely a pullback within an uptrend, not a trend change. Wait for the 5/10-day ratios to turn back above 1.0 before adding new positions.",
+      );
+    } else if (!qtrBullish && mthBullish) {
+      assessParts.push(
+        "Monthly breadth is turning positive ahead of quarterly — a potential regime change is forming. Watch for the quarterly up to cross above down (the Primary Flip) for confirmation. Until then, trade selectively with half positions.",
+      );
+    } else {
+      assessParts.push(
+        "Focus on A+ setups only with tight risk. Reduce position sizes and avoid forcing trades in choppy tape.",
+      );
     }
   }
 
-  // ── Stance ──
+  // ══════════════════════════════════════════════════
+  // 6. STANCE
+  // ══════════════════════════════════════════════════
   let stance: string;
   const isOversold = t2108 < 20 || down50m > 19;
 
   if (regimeSignal === "GREEN") {
-    if (up50m >= 20) {
-      stance = "FULL SIZE — scale into pullbacks, don't chase";
-    } else if (ratio10d >= 2 && qtrBullish && mthBullish) {
-      stance = "FULL SIZE — press breakouts near highs";
+    if (hasRedHot) {
+      stance = "FULL SIZE — scale into pullbacks, don't chase. Wait for 2-3 day pullback for fresh entries.";
+    } else if (hasOverbought) {
+      stance = "FULL SIZE — tighten stops, wait for pullback before adding. Buy fresh setups only.";
+    } else if (ratio10d >= 2 && mthBullish) {
+      stance = "FULL SIZE — press breakouts near highs, add to winners.";
     } else {
-      stance = "FULL SIZE — buy pullbacks on strength";
+      stance = "FULL SIZE — buy pullbacks on strength, disciplined risk management.";
     }
   } else if (regimeSignal === "AMBER") {
-    stance = isOversold
-      ? "TACTICAL BOUNCE — half size, 3-5 day swings"
-      : "HALF SIZE — A+ setups only, tight stops";
+    if (isOversold) {
+      stance = "TACTICAL BOUNCE — half size, 3-5 day duration, tight stops.";
+    } else if (hasBuyingThrust && hasBearishPrimary) {
+      stance = "HALF SIZE — trade the thrust but respect the bearish primary. Short duration only.";
+    } else {
+      stance = "HALF SIZE — A+ setups only, tight stops, no forced trades.";
+    }
   } else {
-    stance = isOversold
-      ? "DEFENSIVE + BOUNCE WATCH — bounce setups valid, cash otherwise"
-      : "CASH / SHORT BIAS — wait for breadth improvement";
+    if (isOversold) {
+      stance = "DEFENSIVE + BOUNCE WATCH — bounce setups valid with tight stops, cash otherwise. Watch for breadth thrust to confirm bottom.";
+    } else {
+      stance = "CASH / SHORT BIAS — preserve capital, wait for Primary Flip or breadth thrust before going long.";
+    }
   }
 
   return {
     regime: { signal: regimeSignal, label: regimeLabel },
-    narrative: parts.join(" "),
+    primaryTrend,
+    keySignals,
+    significantEvents,
+    assessment: assessParts.join(" "),
     stance,
   };
 }
@@ -513,10 +782,11 @@ export default function GoogleSheets() {
         {/* Breadth Terminal Analysis */}
         {breadthAnalysis && (
           <div
-            className="rounded-lg p-3 border mb-3 max-w-[1600px] mx-auto"
+            className="rounded-lg border mb-3 max-w-[1600px] mx-auto overflow-hidden"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
-            <div className="flex items-center justify-between mb-2.5">
+            {/* Header + Regime */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: "var(--terminal-border)" }}>
               <div className="flex items-center gap-2">
                 <Brain className="w-3.5 h-3.5" style={{ color: "var(--terminal-cyan)" }} />
                 <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: "var(--terminal-cyan)" }}>
@@ -533,15 +803,87 @@ export default function GoogleSheets() {
                 </span>
               </div>
             </div>
-            <p className="text-[11px] leading-[1.6] opacity-80 mb-2.5">{breadthAnalysis.narrative}</p>
-            <div
-              className="flex items-center gap-2 pt-2"
-              style={{ borderTop: "1px solid var(--terminal-border)" }}
-            >
-              <span className="text-[9px] font-bold tracking-wider opacity-40">STANCE</span>
-              <span className="text-[10px] font-bold" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
-                {breadthAnalysis.stance}
-              </span>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
+              {/* Left column: Primary Trend + Key Signals */}
+              <div className="px-4 py-3 xl:border-r" style={{ borderColor: "var(--terminal-border)" }}>
+                {/* Primary Trend */}
+                <div className="mb-3">
+                  <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Primary Trend</span>
+                  <p className="text-[11px] leading-[1.5] mt-1 opacity-85">{breadthAnalysis.primaryTrend}</p>
+                </div>
+
+                {/* Key Signals */}
+                {breadthAnalysis.keySignals.length > 0 && (
+                  <div>
+                    <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Key Signals</span>
+                    <div className="mt-1.5 space-y-1.5">
+                      {breadthAnalysis.keySignals.map((sig, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span
+                            className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style={{
+                              background:
+                                sig.type === "bullish" ? "var(--terminal-green)"
+                                : sig.type === "bearish" ? "var(--terminal-red)"
+                                : "var(--terminal-amber)",
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <span
+                              className="text-[10px] font-bold"
+                              style={{
+                                color:
+                                  sig.type === "bullish" ? "var(--terminal-green)"
+                                  : sig.type === "bearish" ? "var(--terminal-red)"
+                                  : "var(--terminal-amber)",
+                              }}
+                            >
+                              {sig.label}
+                            </span>
+                            <span className="text-[10px] opacity-60 ml-1.5">{sig.detail}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right column: Significant Events + Assessment + Stance */}
+              <div className="px-4 py-3 border-t xl:border-t-0" style={{ borderColor: "var(--terminal-border)" }}>
+                {/* Significant Events */}
+                {breadthAnalysis.significantEvents.length > 0 && (
+                  <div className="mb-3">
+                    <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Significant Events (Recent)</span>
+                    <div className="mt-1.5 space-y-1.5">
+                      {breadthAnalysis.significantEvents.map((evt, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="text-[10px] font-mono opacity-40 flex-shrink-0 mt-px">▸</span>
+                          <p className="text-[10px] leading-[1.5] opacity-75">{evt.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assessment */}
+                <div className="mb-3">
+                  <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Assessment</span>
+                  <p className="text-[11px] leading-[1.6] mt-1 opacity-85">{breadthAnalysis.assessment}</p>
+                </div>
+
+                {/* Stance */}
+                <div
+                  className="flex items-center gap-2 pt-2"
+                  style={{ borderTop: "1px solid var(--terminal-border)" }}
+                >
+                  <span className="text-[9px] font-bold tracking-wider opacity-40">STANCE</span>
+                  <span className="text-[10px] font-bold" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
+                    {breadthAnalysis.stance}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )}
