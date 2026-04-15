@@ -247,12 +247,17 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     }
   }
 
-  // ── Consecutive buying thrust days (from today backward) ──
-  let burstDayCount = 0;
-  for (const r of recent) {
-    if (r.up4 >= 300 || r.ratio5d > 2) burstDayCount++;
-    else break;
-  }
+  // ── Burst run detection ──
+  // Count thrust days in the last 7 sessions (non-consecutive — rallies have mixed days)
+  const last7 = recent.slice(0, 7);
+  const thrustDaysInLast7 = last7.filter(r => r.up4 >= 300).length;
+  // Find the peak thrust day (highest up4) in last 7 and how many days ago it was
+  const peakThrustEntry = last7
+    .map((r, i) => ({ up4: r.up4, idx: i }))
+    .reduce((a, b) => a.up4 > b.up4 ? a : b, { up4: 0, idx: -1 });
+  const daysSincePeakThrust = peakThrustEntry.up4 >= 300 ? peakThrustEntry.idx : -1;
+  // "In late burst window": 2+ thrust days in last 7 sessions, peak thrust was 3+ days ago
+  const inLateBurstWindow = thrustDaysInLast7 >= 2 && daysSincePeakThrust >= 3 && ratio5d > 1.5;
 
   // ══════════════════════════════════════════════════
   // 1. REGIME
@@ -436,20 +441,20 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     });
   }
 
-  // Day N of recovery — momentum burst duration
-  if (burstDayCount >= 3 && (qtrBullish || ratio10d > 1)) {
-    const dayLabel = burstDayCount === 3 ? "Day 3" : burstDayCount === 4 ? "Day 4" : `Day ${burstDayCount}`;
+  // Day N of recovery / burst — peel signal
+  if (inLateBurstWindow) {
+    const dayLabel = daysSincePeakThrust >= 5 ? `Day ${daysSincePeakThrust + 1}+` : `Day ${daysSincePeakThrust + 1}`;
     keySignals.push({
       type: "caution",
-      label: `${dayLabel} of momentum burst — consider taking partial profits`,
-      detail: `Momentum bursts (300+ stocks up 4%) typically last 3-5 days. By ${dayLabel}, many stocks have likely reached the 8-20% profit magnitude target. Take the bulk of profits, move stops aggressively to breakeven, and avoid adding new exposure.`,
+      label: `${dayLabel} of momentum burst — PEEL longs into strength`,
+      detail: `The peak thrust day was ${daysSincePeakThrust} sessions ago. Momentum bursts typically last 3-5 days; many stocks have likely reached the 8-20% profit target. Take the bulk of profits now, move stops aggressively to breakeven, and avoid adding new exposure at these levels.`,
     });
   } else if (daysSinceBullishFlip >= 3 && daysSinceBullishFlip <= 7) {
     const sessionLabel = `Session ${daysSinceBullishFlip + 1}`;
     keySignals.push({
       type: "caution",
-      label: `${sessionLabel} of the bullish flip — lock in gains`,
-      detail: `The Primary Indicator flipped bullish ${daysSinceBullishFlip + 1} sessions ago. By session 3-5 of a recovery, stocks that led the initial thrust have typically met profit targets (8-20%). Take the bulk of profit and move stops very aggressively to ensure gains compound.`,
+      label: `${sessionLabel} of bullish flip — lock in gains`,
+      detail: `The Primary Indicator flipped bullish ${daysSinceBullishFlip + 1} sessions ago. By session 3-5 of a recovery, stocks that led the initial thrust have typically met profit targets (8-20%). Take the bulk of profit and move stops very aggressively.`,
     });
   }
 
@@ -513,10 +518,13 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
       (d) => d.idx <= 4,
     ).length;
     if (consecutiveThrusts >= 2) {
+      const peelNote = inLateBurstWindow
+        ? ` We are now in Day ${daysSincePeakThrust + 1} of this burst — momentum bursts typically last 3-5 days. Consider peeling 70-80% of longs into this strength and moving stops aggressively to lock in gains.`
+        : " Continue holding; watch for exhaustion signals (ratio peaking, T2108 rolling over) before peeling.";
       significantEvents.push({
         rowIndex: 0,
         date: getRowDate(validRows[0]),
-        description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — sustained breadth thrust confirms a sustainable rally, not just a dead-cat bounce.`,
+        description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — sustained breadth thrust confirms a sustainable rally, not just a dead-cat bounce.${peelNote}`,
       });
     }
   }
