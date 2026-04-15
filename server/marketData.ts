@@ -46,10 +46,6 @@ async function fetchSheetsBreadthData(): Promise<SheetsBreadthData | null> {
 
     // Sheet is ordered newest-first: valid[0] = most recent trading day
     const latest = valid[0];
-    const last5  = valid.slice(0, 5);
-    const last10 = valid.slice(0, 10);
-    const sumCol = (rows: SheetsCell[][], ci: number) =>
-      rows.reduce((s, r) => s + (sheetNum(r, ci) ?? 0), 0);
 
     const result: SheetsBreadthData = {
       up25q:      sheetNum(latest, SCOL.UP_25Q)  ?? 0,
@@ -58,10 +54,11 @@ async function fetchSheetsBreadthData(): Promise<SheetsBreadthData | null> {
       down25m:    sheetNum(latest, SCOL.DOWN_25M) ?? 0,
       ratio5d:    sheetNum(latest, SCOL.RATIO_5D)  ?? 1,
       ratio10d:   sheetNum(latest, SCOL.RATIO_10D) ?? 1,
-      breakouts5d:  sumCol(last5,  SCOL.UP_4),
-      breakdowns5d: sumCol(last5,  SCOL.DOWN_4),
-      breakouts10d: sumCol(last10, SCOL.UP_4),
-      breakdowns10d: sumCol(last10, SCOL.DOWN_4),
+      // Today's counts — ratio is the sheet's precomputed rolling metric
+      breakouts5d:  sheetNum(latest, SCOL.UP_4) ?? 0,
+      breakdowns5d: sheetNum(latest, SCOL.DOWN_4) ?? 0,
+      breakouts10d: sheetNum(latest, SCOL.UP_4) ?? 0,
+      breakdowns10d: sheetNum(latest, SCOL.DOWN_4) ?? 0,
       t2108:  sheetNum(latest, SCOL.T2108)  ?? 50,
       up50m:  sheetNum(latest, SCOL.UP_50M) ?? 0,
       down50m: sheetNum(latest, SCOL.DOWN_50M) ?? 0,
@@ -411,12 +408,10 @@ export function scoreBreadth(breadth: BreadthMetrics | null, sectorPerformances:
     if (breadth.newLows > breadth.newHighs * 3) score -= 10;
     else if (breadth.newHighs > breadth.newLows * 3) score += 5;
 
-    // 4% burst ratio — use Google Sheets actual data if available, else S&P500-derived
+    // 4% burst ratio — thresholds match conditional formatting: >2 brightGreen, <0.5 red
     const burst = sheets?.ratio10d ?? breadth.burstRatio10d;
-    if (burst >= 2.0) score += 15;
-    else if (burst >= 1.0) score += 5;
+    if (burst > 2.0) score += 15;
     else if (burst < 0.5) score -= 15;
-    else score -= 5;
 
     // 10% Study (scored — extreme momentum oscillator, still S&P500-derived)
     const m20state = breadth.momentum20dState;
