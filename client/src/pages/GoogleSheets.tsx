@@ -359,10 +359,12 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   if (t2108 < 20) {
     keySignals.push({
       type: "bullish",
-      label: `T2108 at ${t2108.toFixed(1)}% (oversold <20)`,
-      detail: t2108 < 15
-        ? "Deeply oversold — this is the zone where buyers historically step in for a bounce. Watch for breadth thrust to confirm."
-        : "Oversold territory — a reflex bounce is probable, but not yet confirmed.",
+      label: `T2108 at ${t2108.toFixed(1)}% — rare oversold signal flashing`,
+      detail: t2108 < 10
+        ? "Extreme oversold — T2108 sub-10 is seen only at major generational lows. Historically a very high-confidence long entry when confirmed by a breadth thrust."
+        : t2108 < 15
+        ? "Deeply oversold — T2108 sub-15 has historically marked significant market bottoms. Watch for a breadth thrust to confirm the turn before entering aggressively."
+        : "T2108 entered the rare oversold zone (<20%) — has historically coincided with short to intermediate-term market lows. A reflex bounce is probable; breadth thrust confirms.",
     });
   } else if (t2108 > 70) {
     keySignals.push({
@@ -455,18 +457,22 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     });
   }
 
-  // Detect T2108 extreme oversold
+  // Detect T2108 oversold — threshold matches CF (<20 = brightGreen)
+  // T2108 sub-20 is a rare signal that has historically coincided with or closely preceded major market bottoms.
   const oversoldDays = recent.filter((r) => r.t2108 < 20);
   if (oversoldDays.length > 0) {
     const deepest = oversoldDays.reduce((a, b) => (a.t2108 < b.t2108 ? a : b));
-    if (deepest.t2108 < 15) {
-      const deepestIdx = recent.indexOf(deepest);
-      significantEvents.push({
-        rowIndex: deepestIdx,
-        date: getRowDate(validRows[deepestIdx]),
-        description: `T2108 hit ${deepest.t2108.toFixed(1)}% — deep oversold zone where buyers historically step in. This is a classic "buy the dip" setup when combined with a breadth thrust.`,
-      });
-    }
+    const deepestIdx = recent.indexOf(deepest);
+    const intensity = deepest.t2108 < 10
+      ? `Extreme oversold — T2108 at ${deepest.t2108.toFixed(1)}% is in rare territory seen only at major market bottoms (e.g. COVID crash, 2022 bear). Historically a high-confidence long-term buy signal when confirmed by a breadth thrust. This is the "back up the truck" zone.`
+      : deepest.t2108 < 15
+      ? `T2108 hit ${deepest.t2108.toFixed(1)}% — deep oversold zone that has historically marked or closely preceded significant market lows. Watch for a breadth thrust (300+ up 4%) to confirm the turn; when it comes, it is one of the most reliable entry signals in the market.`
+      : `T2108 entered oversold territory at ${deepest.t2108.toFixed(1)}% — a rare reading that has frequently coincided with short to intermediate-term market bottoms. Combined with a breadth thrust, this sets up a high-probability bounce.`;
+    significantEvents.push({
+      rowIndex: deepestIdx,
+      date: getRowDate(validRows[deepestIdx]),
+      description: intensity,
+    });
   }
 
   // ══════════════════════════════════════════════════
