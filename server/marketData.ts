@@ -1,7 +1,79 @@
 import YahooFinanceModule from "yahoo-finance2";
-import type { DashboardData, MarketQuote, CategoryScore, BreadthMetrics, TerminalAnalysis, RSTickerData } from "../shared/schema";
+import type { DashboardData, MarketQuote, CategoryScore, BreadthMetrics, TerminalAnalysis, RSTickerData, SheetsCell } from "../shared/schema";
 import { fetchBreadthMetrics } from "./breadthData";
 import { fetchRelativeStrength } from "./rsData";
+import { fetchGoogleSheetData } from "./sheetsData";
+
+// ── Sheets breadth cache (4h TTL, same as breadthData) ──
+let sheetsBreadthCache: SheetsBreadthData | null = null;
+let sheetsBreadthCacheTime = 0;
+const SHEETS_BREADTH_TTL = 4 * 60 * 60 * 1000;
+
+// Column indices matching the Google Sheet structure
+const SCOL = {
+  DATE: 0, UP_4: 1, DOWN_4: 2, RATIO_5D: 3, RATIO_10D: 4,
+  UP_25Q: 5, DOWN_25Q: 6, UP_25M: 7, DOWN_25M: 8,
+  UP_50M: 9, DOWN_50M: 10, UP_13: 11, DOWN_13: 12,
+  WORDEN: 13, T2108: 14, SP: 15,
+};
+
+export interface SheetsBreadthData {
+  up25q: number; down25q: number;
+  up25m: number; down25m: number;
+  ratio5d: number; ratio10d: number;
+  breakouts5d: number; breakdowns5d: number;
+  breakouts10d: number; breakdowns10d: number;
+  t2108: number; up50m: number; down50m: number;
+}
+
+function sheetNum(row: SheetsCell[], ci: number): number | null {
+  const v = row[ci]?.value;
+  return typeof v === 'number' ? v : null;
+}
+
+async function fetchSheetsBreadthData(): Promise<SheetsBreadthData | null> {
+  const now = Date.now();
+  if (sheetsBreadthCache && (now - sheetsBreadthCacheTime) < SHEETS_BREADTH_TTL) {
+    return sheetsBreadthCache;
+  }
+  try {
+    const data = await fetchGoogleSheetData();
+    // Valid data rows have a numeric value in the UP_4 column
+    const valid = data.rows.filter(
+      row => row.length > SCOL.SP && typeof row[SCOL.UP_4]?.value === 'number',
+    );
+    if (valid.length === 0) return null;
+
+    // Newest row is the LAST valid row (sheet appends newest at bottom)
+    const latest = valid[valid.length - 1];
+    const last5 = valid.slice(-5);
+    const last10 = valid.slice(-10);
+    const sumCol = (rows: SheetsCell[][], ci: number) =>
+      rows.reduce((s, r) => s + (sheetNum(r, ci) ?? 0), 0);
+
+    const result: SheetsBreadthData = {
+      up25q:      sheetNum(latest, SCOL.UP_25Q)  ?? 0,
+      down25q:    sheetNum(latest, SCOL.DOWN_25Q) ?? 0,
+      up25m:      sheetNum(latest, SCOL.UP_25M)  ?? 0,
+      down25m:    sheetNum(latest, SCOL.DOWN_25M) ?? 0,
+      ratio5d:    sheetNum(latest, SCOL.RATIO_5D)  ?? 1,
+      ratio10d:   sheetNum(latest, SCOL.RATIO_10D) ?? 1,
+      breakouts5d:  sumCol(last5,  SCOL.UP_4),
+      breakdowns5d: sumCol(last5,  SCOL.DOWN_4),
+      breakouts10d: sumCol(last10, SCOL.UP_4),
+      breakdowns10d: sumCol(last10, SCOL.DOWN_4),
+      t2108:  sheetNum(latest, SCOL.T2108)  ?? 50,
+      up50m:  sheetNum(latest, SCOL.UP_50M) ?? 0,
+      down50m: sheetNum(latest, SCOL.DOWN_50M) ?? 0,
+    };
+    sheetsBreadthCache = result;
+    sheetsBreadthCacheTime = now;
+    return result;
+  } catch (e) {
+    console.warn('Sheets breadth fetch failed:', (e as Error).message?.slice(0, 120));
+    return sheetsBreadthCache; // return stale cache if available
+  }
+}
 
 const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
 const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
@@ -309,7 +381,7 @@ function scoreTrend(
   return { score: Math.max(0, Math.min(100, score)), details, regime };
 }
 
-export function scoreBreadth(breadth: BreadthMetrics | null, sectorPerformances: number[]): { score: number; details: CategoryScore["details"] } {
+export function scoreBreadth(breadth: BreadthMetrics | null, sectorPerformances: number[], sheets?: SheetsBreadthData | null): { score: number; details: CategoryScore["details"] } {
   const details: CategoryScore["details"] = [];
   let score = 50;
 
@@ -339,24 +411,33 @@ export function scoreBreadth(breadth: BreadthMetrics | null, sectorPerformances:
     if (breadth.newLows > breadth.newHighs * 3) score -= 10;
     else if (breadth.newHighs > breadth.newLows * 3) score += 5;
 
-    // 4% burst ratio (scored — measures conviction of moves)
-    const burst = breadth.burstRatio10d;
+    // 4% burst ratio — use Google Sheets actual data if available, else S&P500-derived
+    const burst = sheets?.ratio10d ?? breadth.burstRatio10d;
     if (burst >= 2.0) score += 15;
     else if (burst >= 1.0) score += 5;
     else if (burst < 0.5) score -= 15;
     else score -= 5;
 
-    // 10% Study (scored — extreme momentum oscillator)
+    // 10% Study (scored — extreme momentum oscillator, still S&P500-derived)
     const m20state = breadth.momentum20dState;
     if (m20state === "FROTHY") score -= 10;
     else if (m20state === "CAPITULATION") score += 15;
 
-    // Quarterly breadth (scored — primary direction indicator)
-    const qNetScore = breadth.quarterlyBreadthNet;
+    // Quarterly breadth — use Google Sheets actual data if available
+    const qNetScore = sheets
+      ? (sheets.up25q - sheets.down25q)
+      : breadth.quarterlyBreadthNet;
     if (qNetScore > 50) score += 10;
     else if (qNetScore > 0) score += 5;
     else if (qNetScore > -30) score -= 5;
     else score -= 15;
+
+    // Monthly breadth — additional signal from sheets
+    if (sheets) {
+      const mthNet = sheets.up25m - sheets.down25m;
+      if (mthNet > 0 && qNetScore > 0) score += 5;   // double confirmation
+      else if (mthNet < 0 && qNetScore < 0) score -= 5; // double bearish
+    }
 
     const pct50Signal = pct50 > 60 ? "bullish" : pct50 > 40 ? "neutral" : "bearish";
     const pctQuality = (pct: number) => pct > 70 ? "Strong" : pct > 50 ? "Healthy" : pct > 30 ? "Weak" : "Very weak";
@@ -400,19 +481,19 @@ export function scoreBreadth(breadth: BreadthMetrics | null, sectorPerformances:
       direction: breadth.newHighs > breadth.newLows ? "up" : "down",
     });
 
-    // 4% Burst Ratio (scored)
+    // 4% Burst Ratio — value uses sheets data if available
     const burstLabel = burst >= 2.0 ? "Breakouts dominating" :
       burst >= 1.0 ? "Balanced" :
       burst < 0.5 ? "Breakdowns dominating" : "Slight selling";
     details.push({
       label: "4% Burst (10d)",
-      value: `${burst.toFixed(1)}:1  ${burstLabel}`,
+      value: `${burst.toFixed(2)}x  ${burstLabel}`,
       signal: burst >= 1.5 ? "bullish" : burst >= 0.8 ? "neutral" : "bearish",
       direction: burst >= 1.0 ? "up" : "down",
       burstToggle: true,
     });
 
-    // 10% Study (scored — extreme momentum oscillator)
+    // 10% Study (still S&P500-derived — no equivalent in sheets)
     const pctUp20 = breadth.totalStocks > 0 ? Math.round((breadth.momentum20dUp / breadth.totalStocks) * 1000) / 10 : 0;
     const pctDown20 = breadth.totalStocks > 0 ? Math.round((breadth.momentum20dDown / breadth.totalStocks) * 1000) / 10 : 0;
     const m20Label = m20state === "FROTHY" ? "Frothy" : m20state === "CAPITULATION" ? "Capitulation" : m20state === "LOW_ACTIVITY" ? "Low Activity" : "Normal";
@@ -426,8 +507,8 @@ export function scoreBreadth(breadth: BreadthMetrics | null, sectorPerformances:
       momentum20dToggle: true,
     });
 
-    // Quarterly/Monthly Breadth (scored + toggle)
-    const qNet = breadth.quarterlyBreadthNet;
+    // Quarterly/Monthly Breadth — use sheets data if available
+    const qNet = sheets ? (sheets.up25q - sheets.down25q) : breadth.quarterlyBreadthNet;
     const qLabel = qNet > 50 ? "Healthy" : qNet > 0 ? "Positive" : qNet > -50 ? "Caution" : "High-risk phase";
     details.push({
       label: "Qtrly Breadth",
@@ -958,23 +1039,25 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       perf: quotes[symbol]?.regularMarketChangePercent ?? 0,
     }));
 
-    // Use cached breadth only — never block dashboard on breadth fetching
-    let breadthData: BreadthMetrics | null = null;
-    try {
-      breadthData = await fetchBreadthMetrics();
-    } catch (e) {
-      // Breadth loading in background or unavailable — fall back to sector estimate
-    }
+    // Fetch breadth, RS, and sheets data in parallel — non-blocking, fall back gracefully
+    const [breadthSettled, rsSettled, sheetsSettled] = await Promise.allSettled([
+      fetchBreadthMetrics(),
+      fetchRelativeStrength(RS_SECTOR_SYMBOLS, "SPY", 25),
+      fetchSheetsBreadthData(),
+    ]);
 
-    // Fetch 25d RS data for sector momentum (uses 2min cache, non-blocking fallback)
-    let rsSectors: RSTickerData[] | null = null;
-    try {
-      const rsResult = await fetchRelativeStrength(RS_SECTOR_SYMBOLS, "SPY", 25);
-      rsSectors = rsResult.tickers.filter(t => RS_SECTOR_SYMBOLS.includes(t.symbol));
-      if (rsSectors.length < 8) rsSectors = null; // insufficient data, use fallback
-    } catch (e) {
-      // RS unavailable — scoreMomentum will use daily fallback
-    }
+    const breadthData: BreadthMetrics | null =
+      breadthSettled.status === "fulfilled" ? breadthSettled.value : null;
+
+    const rawRs = rsSettled.status === "fulfilled" ? rsSettled.value : null;
+    const rsSectors: RSTickerData[] | null = rawRs
+      ? rawRs.tickers.filter(t => RS_SECTOR_SYMBOLS.includes(t.symbol)).length >= 8
+        ? rawRs.tickers.filter(t => RS_SECTOR_SYMBOLS.includes(t.symbol))
+        : null
+      : null;
+
+    const sheetsData: SheetsBreadthData | null =
+      sheetsSettled.status === "fulfilled" ? sheetsSettled.value : null;
 
     // Calculate category scores
     const volResult = scoreVolatility(
@@ -983,7 +1066,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       vvixLevel, vvixPctile,
     );
     const trendResult = scoreTrend(spyPrice, spySMA20, spySMA50, spySMA200, qqqPrice, qqqSMA50);
-    const breadthResult = scoreBreadth(breadthData, sectorPerfs.map(s => s.perf));
+    const breadthResult = scoreBreadth(breadthData, sectorPerfs.map(s => s.perf), sheetsData);
     const momentumResult = scoreMomentum(sectorPerfs, rsSectors);
     const dxyLevel = quotes["DX-Y.NYB"]?.regularMarketPrice ?? 0;
     const macroResult = scoreMacro(tnxLevel, tnxSlope, dxySlope, dxyLevel);
@@ -1044,6 +1127,10 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       rsSectors, tnxLevel, dxyLevel,
     );
 
+    // Capture as const so TypeScript can narrow properly in the object literal below
+    const sd = sheetsData;
+    const bd = breadthData;
+
     const data: DashboardData = {
       decision,
       marketQualityScore,
@@ -1055,26 +1142,40 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       alerts: macroResult.alerts,
       lastUpdated: new Date().toISOString(),
       dataSource: "Yahoo Finance (delayed ~15min)",
-      burst: breadthData ? {
+      // 4% Study — prefer Google Sheets actual data; fall back to S&P500-derived
+      burst: sd ? {
         view: "10d" as const,
         data: {
-          "5d": { ratio: breadthData.burstRatio5d, breakouts: breadthData.burstBreakouts5d, breakdowns: breadthData.burstBreakdowns5d },
-          "10d": { ratio: breadthData.burstRatio10d, breakouts: breadthData.burstBreakouts, breakdowns: breadthData.burstBreakdowns },
+          "5d":  { ratio: sd.ratio5d,  breakouts: sd.breakouts5d,  breakdowns: sd.breakdowns5d },
+          "10d": { ratio: sd.ratio10d, breakouts: sd.breakouts10d, breakdowns: sd.breakdowns10d },
+        },
+      } : bd ? {
+        view: "10d" as const,
+        data: {
+          "5d":  { ratio: bd.burstRatio5d,  breakouts: bd.burstBreakouts5d, breakdowns: bd.burstBreakdowns5d },
+          "10d": { ratio: bd.burstRatio10d, breakouts: bd.burstBreakouts,   breakdowns: bd.burstBreakdowns },
         },
       } : undefined,
-      momentum20d: breadthData ? {
-        up: breadthData.momentum20dUp,
-        down: breadthData.momentum20dDown,
-        percentUp: breadthData.totalStocks > 0 ? Math.round((breadthData.momentum20dUp / breadthData.totalStocks) * 1000) / 10 : 0,
-        percentDown: breadthData.totalStocks > 0 ? Math.round((breadthData.momentum20dDown / breadthData.totalStocks) * 1000) / 10 : 0,
-        state: breadthData.momentum20dState,
-        totalStocks: breadthData.totalStocks,
+      momentum20d: bd ? {
+        up: bd.momentum20dUp,
+        down: bd.momentum20dDown,
+        percentUp:   bd.totalStocks > 0 ? Math.round((bd.momentum20dUp   / bd.totalStocks) * 1000) / 10 : 0,
+        percentDown: bd.totalStocks > 0 ? Math.round((bd.momentum20dDown / bd.totalStocks) * 1000) / 10 : 0,
+        state: bd.momentum20dState,
+        totalStocks: bd.totalStocks,
       } : undefined,
-      breadthToggle: breadthData ? {
+      // Quarterly/Monthly Breadth — prefer Google Sheets actual data; fall back to S&P500-derived
+      breadthToggle: sd ? {
         view: "qtr" as const,
         data: {
-          mth: { net: breadthData.monthlyBreadthNet, up: breadthData.monthlyUp25, down: breadthData.monthlyDown25 },
-          qtr: { net: breadthData.quarterlyBreadthNet, up: breadthData.quarterlyUp25, down: breadthData.quarterlyDown25 },
+          mth: { net: sd.up25m - sd.down25m, up: sd.up25m, down: sd.down25m },
+          qtr: { net: sd.up25q - sd.down25q, up: sd.up25q, down: sd.down25q },
+        },
+      } : bd ? {
+        view: "qtr" as const,
+        data: {
+          mth: { net: bd.monthlyBreadthNet,   up: bd.monthlyUp25,   down: bd.monthlyDown25 },
+          qtr: { net: bd.quarterlyBreadthNet, up: bd.quarterlyUp25, down: bd.quarterlyDown25 },
         },
       } : undefined,
       terminalAnalysis,

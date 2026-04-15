@@ -196,9 +196,10 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   const validRows = getValidRows(dataRows);
   if (validRows.length === 0) return null;
 
-  const latest = rowVals(validRows[0]);
-  // Get up to 20 recent rows for pattern detection
-  const recent = validRows.slice(0, 20).map(rowVals);
+  // Newest data is at the END of the array (sheet appends rows at bottom)
+  const latest = rowVals(validRows[validRows.length - 1]);
+  // Scan up to 20 most recent rows (reversed so index 0 = most recent)
+  const recent = validRows.slice(-20).reverse().map(rowVals);
 
   const {
     up4, down4, ratio5d, ratio10d, up25q, down25q, up25m, down25m,
