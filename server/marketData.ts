@@ -2,7 +2,7 @@ import YahooFinanceModule from "yahoo-finance2";
 import type { DashboardData, MarketQuote, CategoryScore, BreadthMetrics, TerminalAnalysis, RSTickerData, SheetsCell } from "../shared/schema";
 import { fetchBreadthMetrics } from "./breadthData";
 import { fetchRelativeStrength } from "./rsData";
-import { fetchGoogleSheetData } from "./sheetsData";
+import { fetchGoogleSheetData } from "./sheetsData.ts";
 
 // ── Sheets breadth cache (4h TTL, same as breadthData) ──
 let sheetsBreadthCache: SheetsBreadthData | null = null;
