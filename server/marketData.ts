@@ -418,20 +418,14 @@ export function scoreBreadth(breadth: BreadthMetrics | null, sectorPerformances:
     if (m20state === "FROTHY") score -= 10;
     else if (m20state === "CAPITULATION") score += 15;
 
-    // Quarterly breadth — use Google Sheets actual data if available
-    const qNetScore = sheets
-      ? (sheets.up25q - sheets.down25q)
-      : breadth.quarterlyBreadthNet;
-    if (qNetScore > 50) score += 10;
-    else if (qNetScore > 0) score += 5;
-    else if (qNetScore > -30) score -= 5;
-    else score -= 15;
-
-    // Monthly breadth — additional signal from sheets
+    // Quarterly breadth — CF threshold: up25q > down25q → green (+10), up25q < down25q → red (-15)
     if (sheets) {
-      const mthNet = sheets.up25m - sheets.down25m;
-      if (mthNet > 0 && qNetScore > 0) score += 5;   // double confirmation
-      else if (mthNet < 0 && qNetScore < 0) score -= 5; // double bearish
+      if (sheets.up25q > sheets.down25q) score += 10;
+      else if (sheets.up25q < sheets.down25q) score -= 15;
+    } else {
+      const qNet = breadth.quarterlyBreadthNet;
+      if (qNet > 0) score += 10;
+      else if (qNet < 0) score -= 15;
     }
 
     const pct50Signal = pct50 > 60 ? "bullish" : pct50 > 40 ? "neutral" : "bearish";
