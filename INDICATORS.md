@@ -7,28 +7,34 @@ This document explains every indicator used by the Trading Dashboard, how each i
 ## Architecture Overview
 
 ```
-Yahoo Finance API (yahoo-finance2)
-        │
-        ├── Real-time quotes: SPY, QQQ, VIX, DXY, TNX, 11 sector ETFs
-        ├── Historical prices: SPY (300d), QQQ (100d), VIX (380d), TNX (30d), DXY (30d)
-        ├── 25-day Relative Strength: 11 equal-weight sector ETFs vs SPY
-        └── S&P 500 breadth: 502 stocks × 400 days of daily closes
-                │
-        ┌───────┴────────────────────────────────────────────────┐
-        │                  5 Scoring Categories                  │
-        ├────────────┬────────────┬──────────┬──────────┬────────┤
-        │ Volatility │ Momentum   │  Trend   │ Breadth  │ Macro  │
-        │   (20%)    │   (20%)    │  (20%)   │  (30%)   │ (10%)  │
-        └────────────┴────────────┴──────────┴──────────┴────────┘
-                │
-        Market Quality Score (0–100)
-                │
-        Trade Decision: YES / CAUTION / NO
+Yahoo Finance API (yahoo-finance2)              Google Sheets (public CSV + XLSX)
+        │                                                │
+        ├── Real-time quotes: SPY, QQQ, VIX,            ├── 4% burst ratio (5d, 10d)
+        │   DXY, TNX, 11 sector ETFs                    ├── Quarterly breadth (up/down 25%)
+        ├── Historical prices: SPY (300d),               ├── Monthly breadth (display only)
+        │   QQQ (100d), VIX (380d), TNX/DXY (30d)      └── Full breadth table (Market Breadth tab)
+        ├── 25-day Relative Strength: 11 ETFs vs SPY
+        └── S&P 500 breadth: 502 stocks × 400d closes
+                │                                                │
+                └───────────────────┬─────────────────────────────┘
+                                    │
+                        ┌───────────┴────────────────────────────────────┐
+                        │                  5 Scoring Categories          │
+                        ├────────────┬────────────┬──────────┬──────────┬┤
+                        │ Volatility │ Momentum   │  Trend   │ Breadth  ││ Macro
+                        │   (20%)    │   (20%)    │  (20%)   │  (30%)   ││ (10%)
+                        └────────────┴────────────┴──────────┴──────────┴┘
+                                    │
+                        Market Quality Score (0–100)
+                                    │
+                        Trade Decision: YES / CAUTION / NO
 ```
 
 ---
 
 ## Data Sources
+
+### Yahoo Finance (via yahoo-finance2)
 
 | Symbol | What it represents | Used for |
 |--------|--------------------|----------|
@@ -45,6 +51,22 @@ Yahoo Finance API (yahoo-finance2)
 | 502 S&P 500 stocks | Individual constituents | Breadth computation |
 
 All price data uses **raw close** (not adjusted close) to avoid dividend-adjustment distortions in MA calculations.
+
+### Google Sheets (primary breadth source)
+
+A publicly readable Google Sheet exports data via CSV (values) and XLSX (for color extraction). Fetched in parallel; values parsed from CSV, cell colors from the XLSX ZIP.
+
+| Column | Description | Used for |
+|--------|-------------|----------|
+| Stocks up 4%+ today | Single-day breakout count | Display alongside ratio |
+| Stocks down 4%+ today | Single-day breakdown count | Display alongside ratio |
+| 5-day ratio | Sheet's precomputed 5-day burst ratio | 4% Burst 5D display + scoring |
+| 10-day ratio | Sheet's precomputed 10-day burst ratio | 4% Burst 10D scoring |
+| Up 25% quarterly | Stocks up ≥25% over 65 days | Quarterly breadth scoring |
+| Down 25% quarterly | Stocks down ≥25% over 65 days | Quarterly breadth scoring |
+| Up/Down 25% monthly | Stocks up/down ≥25% over 22 days | Display only (not scored) |
+
+Sheets data takes **priority** over S&P 500-derived breadth for burst and quarterly metrics. Falls back to Yahoo Finance-derived values if the sheet fetch fails.
 
 ---
 
@@ -323,8 +345,11 @@ Near low:  currentPrice <= yearLow  × 1.05 (within 5%)
 | newHighs > newLows × 3 | +5 |
 
 #### 4% Burst Ratio (5-day / 10-day)
-Measures conviction by counting stocks with >=4% single-day moves. Each day's individual stock moves are tallied, then summed across the window. Toggleable between 5-day and 10-day windows via a pill button in the UI.
+Measures conviction by counting stocks with ≥4% single-day moves. Sourced directly from Google Sheets precomputed ratio columns — the sheet maintains its own rolling burst calculation. The breakout/breakdown counts shown in the UI are today's single-day values.
 
+**Data source priority:** Google Sheets (preferred) → S&P 500-derived rolling sum (fallback)
+
+When falling back to Yahoo Finance data:
 ```
 For each stock, for each of the last 10 days:
   dayChange = (close[d] - close[d-1]) / close[d-1]
@@ -334,16 +359,15 @@ For each stock, for each of the last 10 days:
 burstRatio = totalBreakouts / totalBreakdowns
 ```
 
-**Scoring (based on 10-day ratio):**
+**Scoring (based on 10-day ratio — thresholds match Market Breadth conditional formatting):**
 
-| Burst Ratio | Score Impact | Interpretation |
-|-------------|--------------|----------------|
-| >= 2.0 | +15 | Breakouts dominating |
-| 1.0–2.0 | +5 | Balanced |
-| 0.5–1.0 | -5 | Slight selling |
-| < 0.5 | -15 | Breakdowns dominating |
+| Burst Ratio | Score Impact | CF Color | Interpretation |
+|-------------|--------------|----------|----------------|
+| > 2.0 | +15 | Bright green | Breakouts dominating |
+| 0.5–2.0 | 0 | — | Neutral |
+| ≤ 0.5 | -15 | Red | Breakdowns dominating |
 
-**UI:** 5D/10D pill toggle switches between windows. Both datasets sent from server; toggle is client-side only.
+**UI:** 5D/10D pill toggle switches between windows. Both ratios sent from server; toggle is client-side only. Ratio shown to 2 decimal places (e.g. 2.69x).
 
 #### 10% Study (scored — extreme momentum oscillator)
 Tracks stocks that have moved >=10% over the last 5 trading days. Adapted from the original 20% study for S&P 500 large-caps, which rarely make 20% moves in a week. The lower threshold produces meaningful readings across normal and extreme market conditions.
@@ -370,35 +394,37 @@ percentDown = (momentum20dDown / totalStocks) × 100
 
 **UI:** Frothy = red, Capitulation = green (strong highlight), Low Activity = grey, Normal = amber. Display format: `3.2%↑/0.8%↓ Normal →`
 
-#### Quarterly / Monthly Breadth (scored — primary direction indicator)
-Counts stocks with >=25% gains or losses over a lookback window. Toggleable between quarterly (65 trading days) and monthly (22 trading days) via a MTH/QTR pill button. The quarterly reading is the most critical metric for determining long-term market direction — when stocks down 25% exceed those up 25%, it signals a sustained bear market.
+#### Quarterly / Monthly Breadth (quarterly scored — primary direction indicator)
+Counts stocks with ≥25% gains or losses over a lookback window. Toggleable between quarterly (65 trading days) and monthly (22 trading days) via a MTH/QTR pill button. The quarterly reading is the most critical metric for determining long-term market direction — when stocks down 25% exceed those up 25%, it signals a sustained bear market.
 
+**Data source priority:** Google Sheets (preferred) → S&P 500-derived calculation (fallback)
+
+When falling back to Yahoo Finance data:
 ```
 Quarterly (65 days):
   price65dAgo = closes[length - 66]
   quarterlyReturn = (currentPrice - price65dAgo) / price65dAgo
   if quarterlyReturn >= +0.25 → quarterlyUp25++
   if quarterlyReturn <= -0.25 → quarterlyDown25++
-  quarterlyBreadthNet = quarterlyUp25 - quarterlyDown25
 
 Monthly (22 days):
   price22dAgo = closes[length - 23]
   monthlyReturn = (currentPrice - price22dAgo) / price22dAgo
   if monthlyReturn >= +0.25 → monthlyUp25++
   if monthlyReturn <= -0.25 → monthlyDown25++
-  monthlyBreadthNet = monthlyUp25 - monthlyDown25
 ```
 
-**Scoring (based on quarterly net):**
+**Scoring (quarterly only — thresholds match Market Breadth conditional formatting):**
 
-| Quarterly Net | Score Impact | Interpretation |
-|---------------|--------------|----------------|
-| > 50 | +10 | Healthy uptrend environment |
-| > 0 | +5 | Positive but not strong |
-| > -30 | -5 | Caution — deteriorating |
-| <= -30 | -15 | High-risk phase for drawdowns |
+| Condition | Score Impact | CF Color | Interpretation |
+|-----------|--------------|----------|----------------|
+| up25q > down25q | +10 | Bright green | More stocks up 25% than down |
+| up25q = down25q | 0 | — | Neutral |
+| up25q < down25q | -15 | Red | More stocks down 25% than up |
 
-**UI:** MTH/QTR pill toggle switches between windows. Both datasets sent from server; toggle is client-side only. Display format: `+12 Positive ↑52/↓40 ↑`
+**Monthly breadth is display-only — not scored.**
+
+**UI:** MTH/QTR pill toggle switches between windows. Both datasets sent from server; toggle is client-side only. Display format: `+12 ↑52/↓40 ↑`
 
 #### Oversold Alert
 Triggers when % above 50d MA drops below 25%. Displayed as a flashing amber dot on the UI.
@@ -530,8 +556,9 @@ Used for VIX trend (5-day), TNX trend (5-day), and DXY trend (5-day).
 |------|-----------|-------|
 | Dashboard data | 30 seconds | Quotes + scoring |
 | Breadth metrics | 4 hours | 502 stocks, expensive to compute |
+| Google Sheets data | 4 hours | Burst ratio + quarterly breadth |
 
-Breadth uses a concurrency guard (`fetchInProgress` flag) to prevent duplicate parallel fetches. If a fetch is already running, stale cache is returned.
+Breadth uses a concurrency guard (`fetchInProgress` flag) to prevent duplicate parallel fetches. If a fetch is already running, stale cache is returned. All three sources (Yahoo Finance quotes, breadth metrics, Google Sheets) are fetched in parallel via `Promise.allSettled` on each dashboard request — a failure in any one source degrades gracefully without blocking the others.
 
 ---
 
