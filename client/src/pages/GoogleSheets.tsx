@@ -519,8 +519,8 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     ).length;
     if (consecutiveThrusts >= 2) {
       const peelNote = inLateBurstWindow
-        ? ` We are now in Day ${daysSincePeakThrust + 1} of this burst — momentum bursts typically last 3-5 days. Consider peeling 70-80% of longs into this strength and moving stops aggressively to lock in gains.`
-        : " Continue holding; watch for exhaustion signals (ratio peaking, T2108 rolling over) before peeling.";
+        ? ` Day ${daysSincePeakThrust + 1} of momentum burst — consider peeling 70-80% of longs. Momentum bursts typically exhaust by Day 3-5; lock in profits and move stops to breakeven.`
+        : "";
       significantEvents.push({
         rowIndex: 0,
         date: getRowDate(validRows[0]),
@@ -720,7 +720,9 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   const isOversold = t2108 < 20 || down50m > 19;
 
   if (regimeSignal === "GREEN") {
-    if (hasRedHot) {
+    if (inLateBurstWindow) {
+      stance = `PEEL — Day ${daysSincePeakThrust + 1} of burst. Take 70-80% of profits, move stops to breakeven, no new longs until momentum exhausts.`;
+    } else if (hasRedHot) {
       stance = "FULL SIZE — scale into pullbacks, don't chase. Wait for 2-3 day pullback for fresh entries.";
     } else if (hasOverbought) {
       stance = "FULL SIZE — tighten stops, wait for pullback before adding. Buy fresh setups only.";
@@ -789,7 +791,17 @@ const REGIME_COLORS: Record<string, string> = {
 export default function GoogleSheets() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);
+  const [showAnalysis, setShowAnalysis] = useState(() => {
+    try { return localStorage.getItem("breadth-analysis-open") !== "false"; } catch { return true; }
+  });
   const { theme, toggleTheme } = useTheme();
+
+  const toggleAnalysis = () => {
+    setShowAnalysis(v => {
+      try { localStorage.setItem("breadth-analysis-open", String(!v)); } catch {}
+      return !v;
+    });
+  };
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<SheetsData>({
     queryKey: ["/api/sheets"],
@@ -951,25 +963,38 @@ export default function GoogleSheets() {
             className="rounded-lg border mb-3 max-w-[1600px] mx-auto overflow-hidden"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
-            {/* Header + Regime */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: "var(--terminal-border)" }}>
+            {/* Header + Regime + Toggle */}
+            <div
+              className="flex items-center justify-between px-4 py-2.5 cursor-pointer select-none"
+              style={{ borderBottom: showAnalysis ? "1px solid var(--terminal-border)" : "none" }}
+              onClick={toggleAnalysis}
+            >
               <div className="flex items-center gap-2">
                 <Brain className="w-3.5 h-3.5" style={{ color: "var(--terminal-cyan)" }} />
                 <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: "var(--terminal-cyan)" }}>
                   Terminal Analysis
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="w-2 h-2 rounded-full pulse-live"
-                  style={{ background: REGIME_COLORS[breadthAnalysis.regime.signal] }}
-                />
-                <span className="text-xs font-black tracking-wide" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
-                  {breadthAnalysis.regime.label}
-                </span>
+              <div className="flex items-center gap-3">
+                {!showAnalysis && (
+                  <span className="text-[10px] font-bold" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
+                    {breadthAnalysis.stance}
+                  </span>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="w-2 h-2 rounded-full pulse-live"
+                    style={{ background: REGIME_COLORS[breadthAnalysis.regime.signal] }}
+                  />
+                  <span className="text-xs font-black tracking-wide" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
+                    {breadthAnalysis.regime.label}
+                  </span>
+                </div>
+                <span className="text-[10px] opacity-40">{showAnalysis ? "▲" : "▼"}</span>
               </div>
             </div>
 
+            {showAnalysis && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
               {/* Left column: Primary Trend + Key Signals */}
               <div className="px-4 py-3 xl:border-r" style={{ borderColor: "var(--terminal-border)" }}>
@@ -987,7 +1012,7 @@ export default function GoogleSheets() {
                       {breadthAnalysis.keySignals.map((sig, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <span
-                            className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            className="mt-[3px] w-1.5 h-1.5 rounded-full flex-shrink-0"
                             style={{
                               background:
                                 sig.type === "bullish" ? "var(--terminal-green)"
@@ -996,8 +1021,8 @@ export default function GoogleSheets() {
                             }}
                           />
                           <div className="min-w-0">
-                            <span
-                              className="text-[10px] font-bold"
+                            <div
+                              className="text-[10px] font-bold leading-[1.4]"
                               style={{
                                 color:
                                   sig.type === "bullish" ? "var(--terminal-green)"
@@ -1006,8 +1031,8 @@ export default function GoogleSheets() {
                               }}
                             >
                               {sig.label}
-                            </span>
-                            <span className="text-[10px] opacity-60 ml-1.5">{sig.detail}</span>
+                            </div>
+                            <div className="text-[10px] opacity-60 leading-[1.4]">{sig.detail}</div>
                           </div>
                         </div>
                       ))}
@@ -1056,13 +1081,14 @@ export default function GoogleSheets() {
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
 
         {data && data.rows.length > 0 ? (
-          <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--terminal-border)" }}>
+          <div className="rounded-lg border overflow-hidden max-w-[1600px] mx-auto" style={{ borderColor: "var(--terminal-border)" }}>
             {/* overflow: auto on both axes in same container so sticky thead + sticky col-0 both work */}
-            <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 260px)" }}>
+            <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
               <table className="text-sm border-collapse" style={{ minWidth: "100%" }}>
                 <thead className="sticky top-0 z-20">
                   {groupSpans.length > 0 && (
