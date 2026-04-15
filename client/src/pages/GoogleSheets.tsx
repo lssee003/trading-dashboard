@@ -220,6 +220,40 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   const mthBullish = up25m > down25m;
   const intBullish = up13 > down13;
 
+  // ── T2108 analytics ──────────────────────────────
+  // Use up to 40 rows for the 40MA (user specified); keep other signals within 20-day recent window
+  const t2108Rows40 = validRows.slice(0, 40).map(r => getNumVal(r, COL.T2108) ?? 50);
+  const t2108Values = t2108Rows40.slice(0, 20); // first 20 = same as recent window
+  const t2108_3dAgo = t2108Values[3] ?? t2108;
+  const t2108Peak5d = Math.max(...t2108Values.slice(1, 6));   // peak over last 5 days (excl. today)
+  const t2108Trough5d = Math.min(...t2108Values.slice(1, 6)); // trough over last 5 days
+  // 40MA of T2108 — use however many rows are available up to 40
+  const t2108MA40 = t2108Rows40.reduce((a, b) => a + b, 0) / t2108Rows40.length;
+  const t2108AboveMA40 = t2108 > t2108MA40;
+  // Yesterday's T2108 vs 40MA (for breach detection — was below, now above, or vice versa)
+  const t2108YesterdayAboveMA40 = t2108Values[1] !== undefined ? t2108Values[1] > t2108MA40 : t2108AboveMA40;
+  const t2108CrossedAboveMA40 = t2108AboveMA40 && !t2108YesterdayAboveMA40;
+  const t2108CrossedBelowMA40 = !t2108AboveMA40 && t2108YesterdayAboveMA40;
+  // "Peeling" = T2108 was at an extreme recently and is now reversing away from it
+  const t2108PeelingDown = t2108Peak5d > 60 && t2108 < t2108Peak5d - 3 && t2108 < t2108_3dAgo;
+  const t2108PeelingUp   = t2108Trough5d < 20 && t2108 > t2108Trough5d + 3 && t2108 > t2108_3dAgo;
+
+  // ── Days since Primary Indicator last flipped bullish ──
+  // recent[i] = i days ago; if today (i=0) is first day up25q > down25q → daysSinceFlip = 0 (Day 1)
+  let daysSinceBullishFlip = -1;
+  for (let i = 0; i < recent.length - 1; i++) {
+    if (recent[i].up25q > recent[i].down25q && recent[i + 1].up25q <= recent[i + 1].down25q) {
+      daysSinceBullishFlip = i; break;
+    }
+  }
+
+  // ── Consecutive buying thrust days (from today backward) ──
+  let burstDayCount = 0;
+  for (const r of recent) {
+    if (r.up4 >= 300 || r.ratio5d > 2) burstDayCount++;
+    else break;
+  }
+
   // ══════════════════════════════════════════════════
   // 1. REGIME
   // ══════════════════════════════════════════════════
@@ -376,6 +410,49 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     });
   }
 
+  // T2108 peeling signals
+  if (t2108PeelingDown) {
+    keySignals.push({
+      type: "caution",
+      label: `T2108 peeling down — was ${t2108Peak5d.toFixed(1)}%, now ${t2108.toFixed(1)}%`,
+      detail: `T2108 peaked at ${t2108Peak5d.toFixed(1)}% in the last 5 days and is now rolling over. This is a "peel longs" signal — sell into strength, tighten stops, and avoid chasing extended names. Momentum bursts typically reverse within 3-5 days of peaking.`,
+    });
+  } else if (t2108PeelingUp) {
+    keySignals.push({
+      type: "bullish",
+      label: `T2108 peeling up — was ${t2108Trough5d.toFixed(1)}%, now ${t2108.toFixed(1)}%`,
+      detail: `T2108 troughed at ${t2108Trough5d.toFixed(1)}% in the last 5 days and is now turning up from oversold. This confirms the bounce is underway — initiate positions with confirmation, tight stops below the recent low.`,
+    });
+  }
+
+  // T2108 vs its 40-day MA (structural breadth context)
+  if (!t2108PeelingDown && !t2108PeelingUp && t2108 > 20 && t2108 < 70) {
+    keySignals.push({
+      type: t2108AboveMA40 ? "bullish" : "caution",
+      label: `T2108 at ${t2108.toFixed(1)}% — ${t2108AboveMA40 ? "above" : "below"} its 40MA (${t2108MA40.toFixed(1)}%)`,
+      detail: t2108AboveMA40
+        ? "T2108 is above its 40-day MA — structural breadth is healthy, the majority of stocks are in uptrends. Breakouts have follow-through."
+        : "T2108 is below its 40-day MA — structural breadth is impaired, most stocks are in downtrends. Treat rallies as opportunities to reduce exposure.",
+    });
+  }
+
+  // Day N of recovery — momentum burst duration
+  if (burstDayCount >= 3 && (qtrBullish || ratio10d > 1)) {
+    const dayLabel = burstDayCount === 3 ? "Day 3" : burstDayCount === 4 ? "Day 4" : `Day ${burstDayCount}`;
+    keySignals.push({
+      type: "caution",
+      label: `${dayLabel} of momentum burst — consider taking partial profits`,
+      detail: `Momentum bursts (300+ stocks up 4%) typically last 3-5 days. By ${dayLabel}, many stocks have likely reached the 8-20% profit magnitude target. Take the bulk of profits, move stops aggressively to breakeven, and avoid adding new exposure.`,
+    });
+  } else if (daysSinceBullishFlip >= 3 && daysSinceBullishFlip <= 7) {
+    const sessionLabel = `Session ${daysSinceBullishFlip + 1}`;
+    keySignals.push({
+      type: "caution",
+      label: `${sessionLabel} of the bullish flip — lock in gains`,
+      detail: `The Primary Indicator flipped bullish ${daysSinceBullishFlip + 1} sessions ago. By session 3-5 of a recovery, stocks that led the initial thrust have typically met profit targets (8-20%). Take the bulk of profit and move stops very aggressively to ensure gains compound.`,
+    });
+  }
+
   // Worden universe
   if (worden > 7000) {
     keySignals.push({
@@ -445,6 +522,7 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   }
 
   // Detect capitulation days (600+ down 4%)
+  // Capitulation days (600+ down 4%) — "knockout punch"
   const capitulationDays = recent
     .map((r, i) => ({ ...r, idx: i }))
     .filter((r) => r.down4 >= 600);
@@ -454,6 +532,33 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
       rowIndex: worst.idx,
       date: getRowDate(validRows[worst.idx]),
       description: `Capitulation day — ${worst.down4.toLocaleString()} stocks down 4%+ ("knockout punch"). Extreme selling like this paradoxically often precedes a market turn. Watch for breadth thrust to confirm a bottom.`,
+    });
+  }
+
+  // Distribution days (500–599 down 4% + ratio deteriorating) — below "knockout" but still significant
+  const distributionDays = recent
+    .map((r, i) => ({ ...r, idx: i }))
+    .filter((r) => r.down4 >= 500 && r.down4 < 600 && r.ratio10d < 1);
+  if (distributionDays.length > 0) {
+    const worst = distributionDays.reduce((a, b) => (a.down4 > b.down4 ? a : b));
+    significantEvents.push({
+      rowIndex: worst.idx,
+      date: getRowDate(validRows[worst.idx]),
+      description: `Distribution day — ${worst.down4.toLocaleString()} stocks down 4%+ with the 10-day ratio at ${worst.ratio10d.toFixed(2)}x (sellers dominating). Institutional supply is overwhelming demand. Avoid new long entries; tighten stops on existing positions.`,
+    });
+  }
+
+  // Peak exuberance — up50m >= 20 AND T2108 near recent peak (≥60)
+  // This is the "peel longs" signal from January 15-type scenarios
+  const exuberanceDays = recent
+    .map((r, i) => ({ ...r, idx: i }))
+    .filter((r) => r.up50m >= 20 && r.t2108 >= 60);
+  if (exuberanceDays.length > 0) {
+    const peak = exuberanceDays.reduce((a, b) => (a.up50m > b.up50m ? a : b));
+    significantEvents.push({
+      rowIndex: peak.idx,
+      date: getRowDate(validRows[peak.idx]),
+      description: `Peak exuberance — ${peak.up50m} stocks up 50%+ in a month (Red Hot ≥20) while T2108 reached ${peak.t2108.toFixed(1)}%. This "blowout" condition signals the market is severely overextended. Sell into strength (peel 70-80% of longs), as a sharp correction typically follows within 3-5 sessions.`,
     });
   }
 
@@ -472,6 +577,21 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
       rowIndex: deepestIdx,
       date: getRowDate(validRows[deepestIdx]),
       description: intensity,
+    });
+  }
+
+  // T2108 breach of its 40MA — a structural regime change signal
+  if (t2108CrossedAboveMA40) {
+    significantEvents.push({
+      rowIndex: 0,
+      date: getRowDate(validRows[0]),
+      description: `T2108 crossed above its 40-day MA (now ${t2108.toFixed(1)}% vs 40MA at ${t2108MA40.toFixed(1)}%) — a structural breadth regime change to bullish. The majority of stocks are reclaiming their 40-day MAs. This is a reliable medium-term buy signal; initiate or add to long positions on breakouts.`,
+    });
+  } else if (t2108CrossedBelowMA40) {
+    significantEvents.push({
+      rowIndex: 0,
+      date: getRowDate(validRows[0]),
+      description: `T2108 crossed below its 40-day MA (now ${t2108.toFixed(1)}% vs 40MA at ${t2108MA40.toFixed(1)}%) — a structural breadth regime change to bearish. Most stocks are losing their 40-day MAs. Reduce long exposure, avoid new breakout entries, and consider raising cash.`,
     });
   }
 
