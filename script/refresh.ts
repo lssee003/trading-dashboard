@@ -31,11 +31,17 @@ async function main() {
   writeFileSync(path.join(OUT_DIR, "dashboard.json"), JSON.stringify(dashboard));
   console.log(`Dashboard done (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 
-  console.log("=== Refresh: fetching relative strength ===");
+  console.log("=== Refresh: fetching relative strength (all lookbacks) ===");
   const t1 = Date.now();
-  const rs = await fetchRelativeStrength(RS_SYMBOLS, "SPY", 25);
-  writeFileSync(path.join(OUT_DIR, "rs.json"), JSON.stringify(rs));
-  console.log(`RS done (${((Date.now() - t1) / 1000).toFixed(1)}s)`);
+  const RS_LOOKBACKS = [10, 25, 50, 90];
+  await Promise.all(
+    RS_LOOKBACKS.map(async (lookback) => {
+      const rs = await fetchRelativeStrength(RS_SYMBOLS, "SPY", lookback);
+      writeFileSync(path.join(OUT_DIR, `rs-${lookback}.json`), JSON.stringify(rs));
+      console.log(`RS lookback=${lookback} done`);
+    })
+  );
+  console.log(`RS all done (${((Date.now() - t1) / 1000).toFixed(1)}s)`);
 
   console.log("=== Refresh: fetching Google Sheets data ===");
   const t2 = Date.now();
