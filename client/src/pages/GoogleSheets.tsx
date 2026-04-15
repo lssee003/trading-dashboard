@@ -766,8 +766,8 @@ export default function GoogleSheets() {
     <div className="flex-1 flex flex-col" style={{ background: "var(--terminal-bg)" }}>
       {/* Header — matches Dashboard / RS exactly */}
       <header className="flex-shrink-0 border-b" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
-        <div className="flex items-center justify-between px-4 py-2 text-xs">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between px-4 py-2 text-xs gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-label="Trading Dashboard Logo">
               <rect x="2" y="2" width="20" height="20" rx="3" stroke="var(--terminal-cyan)" strokeWidth="1.5"/>
               <path d="M6 16 L10 10 L14 13 L18 6" stroke="var(--terminal-green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -801,7 +801,7 @@ export default function GoogleSheets() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <button onClick={toggleTheme} className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
               {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
@@ -933,14 +933,15 @@ export default function GoogleSheets() {
 
         {data && data.rows.length > 0 ? (
           <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--terminal-border)" }}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead className="sticky top-0 z-10">
+            {/* overflow: auto on both axes in same container so sticky thead + sticky col-0 both work */}
+            <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 260px)" }}>
+              <table className="text-sm border-collapse" style={{ minWidth: "100%" }}>
+                <thead className="sticky top-0 z-20">
                   {groupSpans.length > 0 && (
                     <tr>
                       {groupSpans.map((span, idx) => (
                         <th key={idx} colSpan={span.colSpan}
-                          className="px-3 py-2.5 text-center font-bold font-mono text-xs tracking-wider border-b border-r"
+                          className={`px-3 py-2.5 text-center font-bold font-mono text-xs tracking-wider border-b border-r${idx === 0 ? " sticky left-0 z-30" : ""}`}
                           style={{ borderColor: "var(--terminal-border)", ...groupStyle(span.label) }}>
                           {span.label || "\u00a0"}
                         </th>
@@ -950,8 +951,8 @@ export default function GoogleSheets() {
                   <tr style={{ background: "var(--terminal-surface)" }}>
                     {data.headers.map((h, idx) => (
                       <th key={idx}
-                        className="px-3 py-2 text-left font-semibold font-mono text-[10px] tracking-wider border-b-2 border-r"
-                        style={{ color: "var(--terminal-cyan)", borderColor: "var(--terminal-border)", maxWidth: 130, whiteSpace: "normal", lineHeight: "1.3" }}>
+                        className={`px-3 py-2 text-left font-semibold font-mono text-[10px] tracking-wider border-b-2 border-r${idx === 0 ? " sticky left-0 z-30" : ""}`}
+                        style={{ color: "var(--terminal-cyan)", borderColor: "var(--terminal-border)", background: "var(--terminal-surface)", maxWidth: 130, whiteSpace: "normal", lineHeight: "1.3" }}>
                         {h}
                       </th>
                     ))}
@@ -964,13 +965,15 @@ export default function GoogleSheets() {
                       <tr key={ri} className="border-b" style={{ borderColor: "var(--terminal-border)" }}>
                         {row.map((cell, ci) => {
                           const computed = isDataRow ? cellStyleComputed(row, ci) : {};
+                          const isFirstCol = ci === 0;
                           return (
                             <td key={ci}
-                              className="px-3 py-1.5 font-mono text-xs border-r whitespace-nowrap"
+                              className={`px-3 py-1.5 font-mono text-xs border-r whitespace-nowrap${isFirstCol ? " sticky left-0 z-10" : ""}`}
                               style={{
                                 ...computed,
                                 borderColor: "var(--terminal-border)",
                                 textAlign: typeof cell.value === "number" ? "right" : "left",
+                                ...(isFirstCol ? { background: computed.backgroundColor ?? "var(--terminal-surface)" } : {}),
                               }}>
                               {cell.value !== null
                                 ? (typeof cell.value === "number" ? cell.value.toLocaleString() : String(cell.value))
