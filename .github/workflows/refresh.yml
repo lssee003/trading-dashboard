@@ -2,9 +2,8 @@ name: Refresh Market Data & Deploy
 
 on:
   schedule:
-    # 9:15 AM ET on weekdays (13:15 UTC during EDT, 14:15 UTC during EST)
-    - cron: '15 13 * * 1-5'
-    - cron: '15 14 * * 1-5'
+    - cron: '0 13 * * 1-5'   # ~9:00 AM EDT / 8:00 AM EST (30min before open)
+    - cron: '15 21 * * 1-5'  # ~5:15 PM EDT / 4:15 PM EST (after close)
   workflow_dispatch: # manual trigger
 
 permissions:
