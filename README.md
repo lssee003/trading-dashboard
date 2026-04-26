@@ -1,5 +1,7 @@
 # 5 Stars Setup — Market Dashboard
 
+**Live App:** https://lssee003.github.io/trading-dashboard/#/
+
 A real-time market quality dashboard for swing traders. Aggregates 30+ indicators across five categories into a single **Market Quality Score (0–100)** with a clear **YES / CAUTION / NO** trade decision.
 
 ## What It Does
