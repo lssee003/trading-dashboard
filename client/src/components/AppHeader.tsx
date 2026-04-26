@@ -113,6 +113,8 @@ export function AppHeader({ activePage, statusContent, updatedLabel, actions }: 
           opacity: navOpen ? 1 : 0,
           transition: "max-height 0.25s ease, opacity 0.2s ease",
           borderTopWidth: navOpen ? "1px" : "0px",
+          position: "relative",
+          zIndex: 50,
         }}
       >
         {NAV_ITEMS.map((item, i) => {
