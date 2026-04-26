@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useCallback } from "react";
+import { useScrollHint } from "@/hooks/useScrollHint";
 import type { RSResponse, RSTickerData } from "@shared/schema";
 import { RSHistogram } from "../components/RSHistogram";
 import { RRGChart } from "../components/RRGChart";
 import { computeRRGData } from "@/lib/rrg";
 import { useTheme } from "@/hooks/useTheme";
-import { Link } from "wouter";
 import {
   RefreshCw, Search, Sun, Moon, X, Plus, Download,
   ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity, Table, Orbit,
 } from "lucide-react";
+import { AppHeader } from "../components/AppHeader";
 import {
   LOOKBACK_OPTIONS,
   BENCHMARK_OPTIONS,
@@ -47,6 +48,7 @@ function formatPulse(pulse: number | null): string {
 const RS_PULSE_TOOLTIP = "RS Pulse shows where today's RS ranks within the selected window's range. >80% = momentum still accelerating.";
 
 export default function RelativeStrength() {
+  const rsTableRef = useScrollHint<HTMLDivElement>();
   const { theme, toggleTheme } = useTheme();
 
   // Controls
@@ -238,70 +240,21 @@ export default function RelativeStrength() {
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--terminal-bg)" }}>
       {/* ─── Header ─── */}
-      <header
-        className="flex-shrink-0 border-b"
-        style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}
-      >
-        <div className="flex items-center justify-between px-4 py-2 text-xs gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
-            {/* Logo */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-label="Trading Dashboard Logo">
-              <rect x="2" y="2" width="20" height="20" rx="3" stroke="var(--terminal-cyan)" strokeWidth="1.5"/>
-              <path d="M6 16 L10 10 L14 13 L18 6" stroke="var(--terminal-green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="18" cy="6" r="1.5" fill="var(--terminal-green)"/>
-            </svg>
-
-            {/* Nav tabs */}
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
-              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}
-              data-testid="link-home"
-            >
-              <span className="font-bold tracking-wide">MARKET MONITOR</span>
-            </Link>
-
-            <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded"
-              style={{ color: "#fff", background: "var(--terminal-blue)" }}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span className="font-bold tracking-wide">RELATIVE STRENGTH</span>
-            </div>
-
-            <Link
-              href="/market-breadth"
-              className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
-              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}
-              data-testid="link-market-breadth"
-            >
-              <Table className="w-3.5 h-3.5" />
-              <span className="font-bold tracking-wide">MARKET BREADTH</span>
-            </Link>
-
-            {/* Status */}
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
-                style={{
-                  background: IS_STATIC
-                    ? "var(--terminal-cyan)"
-                    : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)")
-                }}
-              />
-              <span style={{
-                color: IS_STATIC
-                  ? "var(--terminal-cyan)"
-                  : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)")
-              }}>
-                {IS_STATIC
-                  ? "SNAPSHOT"
-                  : (isFetching ? "LOADING" : "LIVE")}
-              </span>
-            </div>
+      <AppHeader
+        activePage="rs"
+        statusContent={
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
+              style={{ background: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }}
+            />
+            <span style={{ color: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }}>
+              {IS_STATIC ? "SNAPSHOT" : (isFetching ? "LOADING" : "LIVE")}
+            </span>
           </div>
-
-          <div className="flex items-center gap-3 flex-shrink-0">
+        }
+        actions={
+          <>
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
@@ -310,7 +263,6 @@ export default function RelativeStrength() {
             >
               {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
-
             <button
               onClick={() => refetch()}
               className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
@@ -318,9 +270,9 @@ export default function RelativeStrength() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </button>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {/* ─── Main Content ─── */}
       <main className="flex-1 overflow-y-auto p-3 md:p-4">
@@ -650,7 +602,7 @@ export default function RelativeStrength() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" ref={rsTableRef}>
                 <table className="w-full text-[11px]" data-testid="rs-table">
                   <thead>
                     <tr style={{ background: "var(--overlay-subtle)" }}>

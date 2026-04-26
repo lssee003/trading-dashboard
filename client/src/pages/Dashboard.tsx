@@ -8,9 +8,9 @@ import { ScoreBreakdown } from "../components/ScoreBreakdown";
 import { AlertBanner } from "../components/AlertBanner";
 import { AnalysisPanel } from "../components/AnalysisPanel";
 import { DashboardSkeleton } from "../components/DashboardSkeleton";
-import { RefreshCw, Activity, Sun, Moon, BarChart3, Table } from "lucide-react";
-import { Link } from "wouter";
+import { RefreshCw, Activity, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { AppHeader } from "../components/AppHeader";
 
 const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
 
@@ -88,91 +88,30 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--terminal-bg)" }}>
-      {/* Top Bar */}
-      <header className="flex-shrink-0 border-b" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
-        {/* Status Bar */}
-        <div className="flex items-center justify-between px-4 py-2 text-xs gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
-            {/* Logo */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-label="Trading Dashboard Logo">
-              <rect x="2" y="2" width="20" height="20" rx="3" stroke="var(--terminal-cyan)" strokeWidth="1.5"/>
-              <path d="M6 16 L10 10 L14 13 L18 6" stroke="var(--terminal-green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="18" cy="6" r="1.5" fill="var(--terminal-green)"/>
-            </svg>
-
-            {/* Nav tabs */}
-            <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded"
-              style={{ color: "#fff", background: "var(--terminal-blue)" }}
-            >
-              <span className="font-bold tracking-wide">MARKET MONITOR</span>
-            </div>
-
-            <Link
-              href="/relative-strength"
-              className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
-              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}
-              data-testid="link-relative-strength"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span className="font-bold tracking-wide">RELATIVE STRENGTH</span>
-            </Link>
-
-            <Link
-              href="/market-breadth"
-              className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
-              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}
-              data-testid="link-market-breadth"
-            >
-              <Table className="w-3.5 h-3.5" />
-              <span className="font-bold tracking-wide">MARKET BREADTH</span>
-            </Link>
-
-            {/* Status */}
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
-                style={{ 
-                  background: IS_STATIC 
-                    ? "var(--terminal-cyan)" 
-                    : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") 
-                }}
-              />
-              <span style={{ 
-                color: IS_STATIC 
-                  ? "var(--terminal-cyan)" 
-                  : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") 
-              }}>
-                {IS_STATIC 
-                  ? "SNAPSHOT" 
-                  : (isFetching ? "UPDATING" : "LIVE")}
-              </span>
-            </div>
-
-            {/* Last updated */}
-            <span className="opacity-40">
-              {IS_STATIC && data?.lastUpdated
-                ? `updated ${formatDataTimestamp(data.lastUpdated)}`
-                : `updated ${secondsAgo}s ago`}
+      <AppHeader
+        activePage="monitor"
+        statusContent={
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
+              style={{ background: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }}
+            />
+            <span style={{ color: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }}>
+              {IS_STATIC ? "SNAPSHOT" : (isFetching ? "UPDATING" : "LIVE")}
             </span>
           </div>
-
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {/* Theme Toggle */}
+        }
+        updatedLabel={IS_STATIC && data?.lastUpdated ? `updated ${formatDataTimestamp(data.lastUpdated)}` : `updated ${secondsAgo}s ago`}
+        actions={
+          <>
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
               data-testid="button-theme-toggle"
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {theme === "dark" ? (
-                <Sun className="w-3.5 h-3.5" />
-              ) : (
-                <Moon className="w-3.5 h-3.5" />
-              )}
+              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
-
-            {/* Refresh (hidden in static mode) */}
             {!IS_STATIC && (
               <button
                 onClick={handleRefresh}
@@ -182,9 +121,9 @@ export default function Dashboard() {
                 <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
               </button>
             )}
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {/* Alert Banner */}
       {data?.alerts && data.alerts.length > 0 && (

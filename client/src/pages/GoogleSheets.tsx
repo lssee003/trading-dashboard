@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
+import { useScrollHint } from "@/hooks/useScrollHint";
 import type { SheetsData, SheetsCell } from "@shared/schema";
 import { useTheme } from "@/hooks/useTheme";
-import { Link } from "wouter";
-import { RefreshCw, Sun, Moon, BarChart3, Table, Brain } from "lucide-react";
+import { RefreshCw, Sun, Moon, Table, Brain } from "lucide-react";
+import { AppHeader } from "../components/AppHeader";
 
 const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
 
@@ -789,6 +790,7 @@ const REGIME_COLORS: Record<string, string> = {
 };
 
 export default function GoogleSheets() {
+  const breadthTableRef = useScrollHint<HTMLDivElement>();
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(() => {
@@ -876,74 +878,29 @@ export default function GoogleSheets() {
     return { background: "var(--terminal-bg)", color: "transparent" };
   };
 
-  if (isError) {
-    return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: "var(--terminal-bg)" }}>
-        <div className="text-center p-8 rounded-lg border" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
-          <Table className="w-12 h-12 mx-auto mb-4 opacity-40" />
-          <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA LOAD ERROR</h2>
-          <p className="text-sm opacity-60 mb-4 max-w-md">{(error as Error)?.message || "Failed to load data"}</p>
-          {!IS_STATIC && (
-            <button onClick={handleRefresh} className="px-4 py-2 rounded text-sm font-medium" style={{ background: "var(--terminal-blue)", color: "#fff" }}>Retry</button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: "var(--terminal-bg)" }}>
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 mx-auto mb-3 animate-spin opacity-40" />
-          <p className="text-sm opacity-60">Loading breadth data...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--terminal-bg)" }}>
-      {/* Header — matches Dashboard / RS exactly */}
-      <header className="flex-shrink-0 border-b" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
-        <div className="flex items-center justify-between px-4 py-2 text-xs gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-label="Trading Dashboard Logo">
-              <rect x="2" y="2" width="20" height="20" rx="3" stroke="var(--terminal-cyan)" strokeWidth="1.5"/>
-              <path d="M6 16 L10 10 L14 13 L18 6" stroke="var(--terminal-green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="18" cy="6" r="1.5" fill="var(--terminal-green)"/>
-            </svg>
-
-            <Link href="/" className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
-              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}>
-              <span className="font-bold tracking-wide">MARKET MONITOR</span>
-            </Link>
-            <Link href="/relative-strength" className="flex items-center gap-1.5 px-3 py-1 rounded transition-colors"
-              style={{ color: "var(--terminal-dim)", background: "transparent", border: "1px solid var(--terminal-border)" }}>
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span className="font-bold tracking-wide">RELATIVE STRENGTH</span>
-            </Link>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded"
-              style={{ color: "#fff", background: "var(--terminal-blue)" }}>
-              <Table className="w-3.5 h-3.5" />
-              <span className="font-bold tracking-wide">MARKET BREADTH</span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
-                style={{ background: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }} />
-              <span style={{ color: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }}>
-                {IS_STATIC ? "SNAPSHOT" : (isFetching ? "UPDATING" : "LIVE")}
-              </span>
-            </div>
-            <span className="opacity-40">
-              {IS_STATIC && data?.lastUpdated ? `updated ${formatDataTimestamp(data.lastUpdated)}` : `updated ${secondsAgo}s ago`}
+      <AppHeader
+        activePage="breadth"
+        statusContent={
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`w-2 h-2 rounded-full ${IS_STATIC ? "" : "pulse-live"}`}
+              style={{ background: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }}
+            />
+            <span style={{ color: IS_STATIC ? "var(--terminal-cyan)" : (isFetching ? "var(--terminal-amber)" : "var(--terminal-green)") }}>
+              {IS_STATIC ? "SNAPSHOT" : (isFetching ? "UPDATING" : "LIVE")}
             </span>
           </div>
-
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <button onClick={toggleTheme} className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+        }
+        updatedLabel={IS_STATIC && data?.lastUpdated ? `updated ${formatDataTimestamp(data.lastUpdated)}` : `updated ${secondsAgo}s ago`}
+        actions={
+          <>
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
               {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
             {!IS_STATIC && (
@@ -951,12 +908,32 @@ export default function GoogleSheets() {
                 <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
               </button>
             )}
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {/* Terminal Analysis + Table */}
       <main className="flex-1 overflow-auto p-3 md:p-4">
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <RefreshCw className="w-8 h-8 mx-auto mb-3 animate-spin opacity-40" />
+              <p className="text-sm opacity-60">Loading breadth data...</p>
+            </div>
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center p-8 rounded-lg border" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
+              <Table className="w-12 h-12 mx-auto mb-4 opacity-40" />
+              <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA LOAD ERROR</h2>
+              <p className="text-sm opacity-60 mb-4 max-w-md">{(error as Error)?.message || "Failed to load data"}</p>
+              {!IS_STATIC && (
+                <button onClick={handleRefresh} className="px-4 py-2 rounded text-sm font-medium" style={{ background: "var(--terminal-blue)", color: "#fff" }}>Retry</button>
+              )}
+            </div>
+          </div>
+        ) : null}
+
         {/* Breadth Terminal Analysis */}
         {breadthAnalysis && (
           <div
@@ -1088,7 +1065,7 @@ export default function GoogleSheets() {
         {data && data.rows.length > 0 ? (
           <div className="rounded-lg border overflow-hidden max-w-[1600px] mx-auto" style={{ borderColor: "var(--terminal-border)" }}>
             {/* overflow: auto on both axes in same container so sticky thead + sticky col-0 both work */}
-            <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
+            <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 220px)" }} ref={breadthTableRef}>
               <table className="text-sm border-collapse" style={{ minWidth: "100%" }}>
                 <thead className="sticky top-0 z-20">
                   {groupSpans.length > 0 && (
