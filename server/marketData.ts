@@ -929,7 +929,6 @@ function generateTerminalAnalysis(
     let bounceCount = 0;
     if (breadth.pctAbove50d < 25) bounceCount++;
     if (breadth.momentum20dState === "CAPITULATION") bounceCount++;
-    if (breadth.momentum20dDown > 15) bounceCount++;
     if (vixLevel > 30) bounceCount++;
     if (breadth.quarterlyBreadthNet < -50) bounceCount++;
 
