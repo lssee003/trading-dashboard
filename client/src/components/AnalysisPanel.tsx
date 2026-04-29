@@ -79,9 +79,9 @@ export function AnalysisPanel({ summary, dataSource, terminalAnalysis }: Analysi
         <div
           className="flex items-start gap-1.5 rounded px-2 py-1.5 mb-2.5 text-[10px] leading-[1.5]"
           style={{
-            background: "rgba(245, 158, 11, 0.08)",
-            border: "1px solid rgba(245, 158, 11, 0.25)",
-            color: "#fde68a",
+            background: "var(--alert-amber-bg)",
+            border: "1px solid var(--alert-amber-border)",
+            color: "var(--terminal-amber)",
           }}
         >
           <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "var(--terminal-amber)" }} />
