@@ -714,9 +714,10 @@ function scoreMacro(tnxLevel: number, tnxSlope: number, dxySlope: number, dxyLev
     direction: "flat",
   });
 
-  // FOMC 2026 dates (announcement days)
+  // FOMC 2026 announcement dates — update each December with the following year's schedule
+  // Source: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
   const fomcDates2026 = [
-    "2026-01-28", "2026-03-18", "2026-04-29", "2026-05-06", "2026-06-17",
+    "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
     "2026-07-29", "2026-09-16", "2026-11-04", "2026-12-16",
   ];
   // Use local midnight for comparison so "TODAY" window is correct in US Eastern
