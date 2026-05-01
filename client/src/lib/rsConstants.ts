@@ -1,12 +1,4 @@
-/** Jeff Sun's equal-weight ETF universe — seed watchlist */
-export const SEED_SYMBOLS = [
-  "SPY","FXI","GXC","FFTY","XHB","RSPT","CIBR","PBJ","XRT","RSPS",
-  "IBUY","RSPR","DRIV","WCLD","PEJ","XTL","XSW","KIE","QQQE","IPAY",
-  "USO","RSPD","KCE","RSP","ROBO","GNR","BOAT","XOP","FCG","BUZZ",
-  "XHS","PAVE","RSPH","MOO","RSPF","RSPN","KBE","GBTC","XTN","RSPG",
-  "XBI","BLOK","RSPC","RSPU","XSD","IWM","RSPM","XHE","XPH","KRE",
-  "XAR","XES","COPX","PBW","XME","SLX","JETS",
-] as const;
+export { RS_SYMBOLS as SEED_SYMBOLS } from "@shared/rsSymbols";
 
 export const LOOKBACK_OPTIONS = [
   { label: "10D", value: 10 },

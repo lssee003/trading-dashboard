@@ -4,15 +4,7 @@ import { fetchDashboardData } from "./marketData";
 import { fetchRelativeStrength } from "./rsData";
 import { fetchBreadthMetrics } from "./breadthData";
 import { fetchGoogleSheetData } from "./sheetsData";
-
-const DEFAULT_RS_SYMBOLS = [
-  "SPY","FXI","GXC","FFTY","XHB","RSPT","CIBR","PBJ","XRT","RSPS",
-  "IBUY","RSPR","DRIV","WCLD","PEJ","XTL","XSW","KIE","QQQE","IPAY",
-  "USO","RSPD","KCE","RSP","ROBO","GNR","BOAT","XOP","FCG","BUZZ",
-  "XHS","PAVE","RSPH","MOO","RSPF","RSPN","KBE","GBTC","XTN","RSPG",
-  "XBI","BLOK","RSPC","RSPU","XSD","IWM","RSPM","XHE","XPH","KRE",
-  "XAR","XES","COPX","PBW","XME","SLX","JETS",
-];
+import { RS_SYMBOLS } from "../shared/rsSymbols";
 
 export async function registerRoutes(server: Server, app: Express) {
   // Main dashboard data endpoint
@@ -37,7 +29,7 @@ export async function registerRoutes(server: Server, app: Express) {
       const extra = req.query.extra ? (req.query.extra as string).split(",").map(s => s.trim().toUpperCase()).filter(Boolean) : [];
 
       // Combine default + extra, deduplicate, remove benchmark from list
-      const allSymbols = Array.from(new Set([...DEFAULT_RS_SYMBOLS, ...extra])).filter(s => s !== benchmark);
+      const allSymbols = Array.from(new Set([...RS_SYMBOLS, ...extra])).filter(s => s !== benchmark);
 
       const data = await fetchRelativeStrength(allSymbols, benchmark, lookback);
       res.json(data);

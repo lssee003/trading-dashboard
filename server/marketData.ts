@@ -94,7 +94,7 @@ const SECTOR_ETFS: Record<string, string> = {
   XLC: "Communication",
 };
 
-// Equal-weight sector ETFs for 25d RS momentum scoring
+// Equal-weight sector ETFs for 10d RS momentum scoring
 const RS_SECTOR_SYMBOLS = ["RSPG","RSPT","RSPH","RSPF","RSPD","RSPS","RSPC","RSPR","RSPU","RSPM","RSPN"];
 
 const RS_SECTOR_NAMES: Record<string, string> = {
@@ -542,7 +542,7 @@ function scoreMomentum(
   let score = 50;
   let rotationType = "Mixed";
 
-  // ─── 25d RS-based scoring (preferred) ───
+  // ─── 10d RS-based scoring (preferred) ───
   if (rsSectors && rsSectors.length >= 8) {
     const sorted = [...rsSectors].sort((a, b) => b.rsVsBenchmark - a.rsVsBenchmark);
     const outperforming = sorted.filter(s => s.rsVsBenchmark > 1.0);
@@ -550,7 +550,7 @@ function scoreMomentum(
     const top2 = sorted.slice(0, 2);
     const bottom2 = sorted.slice(-2);
 
-    // ── 1. RS participation: how many sectors beat SPY over 25d (-20 to +25)
+    // ── 1. RS participation: how many sectors beat SPY over 10d (-20 to +25)
     if (outCount >= 7) score += 25;
     else if (outCount >= 5) score += 12;
     else if (outCount >= 3) score += 0;
@@ -589,21 +589,21 @@ function scoreMomentum(
 
     // ── Detail rows (short names to prevent panel overflow) ──
     details.push({
-      label: "25d Leaders",
+      label: "10d Leaders",
       value: top2.map(s => RS_SECTOR_SHORT[s.symbol] || s.symbol).join(", "),
       signal: topAvgRS > 1.03 ? "bullish" : "neutral",
       direction: "up",
     });
 
     details.push({
-      label: "25d Laggards",
+      label: "10d Laggards",
       value: bottom2.map(s => RS_SECTOR_SHORT[s.symbol] || s.symbol).join(", "),
       signal: bottomAvgRS < 0.95 ? "bearish" : "neutral",
       direction: "down",
     });
 
     details.push({
-      label: "Beating SPY",
+      label: "Beating SPY (10d)",
       value: `${outCount}/11`,
       signal: outCount >= 6 ? "bullish" : outCount >= 4 ? "neutral" : "bearish",
       direction: outCount >= 6 ? "up" : outCount < 3 ? "down" : "flat",
@@ -817,19 +817,20 @@ function generateTerminalAnalysis(
 
   // RS rotation context
   let rotationRead = "";
+  let rsOutCount = 0;
   if (rsSectors && rsSectors.length >= 8) {
     const sorted = [...rsSectors].sort((a, b) => b.rsVsBenchmark - a.rsVsBenchmark);
     const top2 = sorted.slice(0, 2).map(s => RS_SECTOR_NAMES[s.symbol] || s.symbol).join(" and ");
-    const outCount = sorted.filter(s => s.rsVsBenchmark > 1.0).length;
+    rsOutCount = sorted.filter(s => s.rsVsBenchmark > 1.0).length;
     const defAvgRank = sorted.reduce((sum, s, i) => DEFENSIVE_SECTORS.has(s.symbol) ? sum + i : sum, 0) / DEFENSIVE_SECTORS.size;
     const cycAvgRank = sorted.reduce((sum, s, i) => CYCLICAL_SECTORS.has(s.symbol) ? sum + i : sum, 0) / CYCLICAL_SECTORS.size;
 
     if (cycAvgRank < defAvgRank - 1.5) {
-      rotationRead = `risk-on rotation (${top2} leading, ${outCount}/11 beating SPY)`;
+      rotationRead = `risk-on rotation (${top2} leading, ${rsOutCount}/11 beating SPY)`;
     } else if (defAvgRank < cycAvgRank - 1.5) {
-      rotationRead = `defensive rotation (${top2} leading, only ${outCount}/11 beating SPY)`;
+      rotationRead = `defensive rotation (${top2} leading, only ${rsOutCount}/11 beating SPY)`;
     } else {
-      rotationRead = `mixed rotation (${top2} leading, ${outCount}/11 beating SPY)`;
+      rotationRead = `mixed rotation (${top2} leading, ${rsOutCount}/11 beating SPY)`;
     }
   }
 
@@ -847,7 +848,7 @@ function generateTerminalAnalysis(
 
     // Sentence 2: strongest bearish supporting signal
     if (rotationRead.startsWith("defensive")) {
-      parts.push(`25-day sector RS confirms ${rotationRead} — institutions are de-risking.`);
+      parts.push(`10-day sector RS confirms ${rotationRead} — institutions are de-risking.`);
     } else if (burst < 0.5) {
       parts.push(`The 4% burst ratio at ${burst.toFixed(1)}x shows breakdowns dominating — selling conviction is strong.`);
     } else if (vixLevel > 30 && tnxLevel > 4.5) {
@@ -855,7 +856,7 @@ function generateTerminalAnalysis(
     } else if (vixLevel > 25 && termStructureRatio > 1.0) {
       parts.push("Elevated VIX with inverting term structure signals near-term stress.");
     } else if (rotationRead) {
-      parts.push(`25-day sector RS shows ${rotationRead}.`);
+      parts.push(`10-day sector RS shows ${rotationRead}.`);
     }
 
     // Sentence 3: only if bounce conditions are forming (actionable exception)
@@ -879,13 +880,18 @@ function generateTerminalAnalysis(
 
     // Sentence 2: strongest bullish supporting signal
     if (rotationRead.startsWith("risk-on")) {
-      parts.push(`25-day sector RS confirms ${rotationRead} — risk appetite is healthy.`);
+      const appetiteComment = rsOutCount >= 6
+        ? "risk appetite is healthy."
+        : rsOutCount >= 3
+        ? "RS breadth is moderate — leadership is concentrated in a few sectors."
+        : "RS breadth is thin — only a handful of sectors are keeping pace with SPY on a 10-day basis.";
+      parts.push(`10-day sector RS confirms ${rotationRead} — ${appetiteComment}`);
     } else if (burst >= 2.0) {
       parts.push(`The 4% burst ratio at ${burst.toFixed(1)}x confirms aggressive buying — big money is flowing in.`);
     } else if (vixLevel < 15) {
       parts.push("Low VIX confirms a complacent environment ideal for breakout follow-through.");
     } else if (rotationRead) {
-      parts.push(`25-day sector RS shows ${rotationRead}.`);
+      parts.push(`10-day sector RS shows ${rotationRead}.`);
     }
 
     // Sentence 3: only if imminent warning (actionable exception)
@@ -909,9 +915,9 @@ function generateTerminalAnalysis(
     } else if (breadthScore - trendScore > 30) {
       parts.push("Breadth is improving ahead of price — watch for SPY to reclaim the 20d MA to confirm a turn.");
     } else if (rotationRead.startsWith("defensive")) {
-      parts.push(`25-day sector RS shows ${rotationRead} — lean defensive.`);
+      parts.push(`10-day sector RS shows ${rotationRead} — lean defensive.`);
     } else if (rotationRead) {
-      parts.push(`25-day sector RS shows ${rotationRead}.`);
+      parts.push(`10-day sector RS shows ${rotationRead}.`);
     }
 
     // Sentence 3: macro/vol if extreme
@@ -1035,7 +1041,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     // Fetch breadth, RS, and sheets data in parallel — non-blocking, fall back gracefully
     const [breadthSettled, rsSettled, sheetsSettled] = await Promise.allSettled([
       fetchBreadthMetrics(),
-      fetchRelativeStrength(RS_SECTOR_SYMBOLS, "SPY", 25),
+      fetchRelativeStrength(RS_SECTOR_SYMBOLS, "SPY", 10),
       fetchSheetsBreadthData(),
     ]);
 

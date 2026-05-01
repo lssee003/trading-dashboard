@@ -13,7 +13,7 @@ Yahoo Finance API (yahoo-finance2)              Google Sheets (public CSV + XLSX
         │   DXY, TNX, 11 sector ETFs                    ├── Quarterly breadth (up/down 25%)
         ├── Historical prices: SPY (300d),               ├── Monthly breadth (display only)
         │   QQQ (100d), VIX (380d), TNX/DXY (30d)      └── Full breadth table (Market Breadth tab)
-        ├── 25-day Relative Strength: 11 ETFs vs SPY
+        ├── 10-day Relative Strength: 11 ETFs vs SPY
         └── S&P 500 breadth: 502 stocks × 400d closes
                 │                                                │
                 └───────────────────┬─────────────────────────────┘
@@ -47,7 +47,7 @@ Yahoo Finance API (yahoo-finance2)              Google Sheets (public CSV + XLSX
 | `^TNX` | 10-Year Treasury Yield | Macro scoring |
 | `DX-Y.NYB` | US Dollar Index (DXY) | Macro scoring |
 | `XLK, XLF, XLE...` | 11 SPDR sector ETFs | Momentum scoring (daily fallback) |
-| 11 equal-weight sector ETFs | RS sector proxies | Momentum scoring (25d RS, preferred) |
+| 11 equal-weight sector ETFs | RS sector proxies | Momentum scoring (10d RS, preferred) |
 | 502 S&P 500 stocks | Individual constituents | Breadth computation |
 
 All price data uses **raw close** (not adjusted close) to avoid dividend-adjustment distortions in MA calculations.
@@ -148,11 +148,11 @@ Where the current VIX sits relative to its values over the past year (380 tradin
 
 ## 2. Momentum (20% weight)
 
-Measures sector rotation strength and breadth of participation using 25-day relative strength (RS) analysis across 11 S&P sector ETFs. Falls back to daily sector performance when RS data is unavailable.
+Measures sector rotation strength and breadth of participation using 10-day relative strength (RS) analysis across 11 S&P sector ETFs. Falls back to daily sector performance when RS data is unavailable.
 
-### Preferred Mode: 25-Day Relative Strength
+### Preferred Mode: 10-Day Relative Strength
 
-Uses equal-weight sector ETFs to compute 25-day RS vs SPY benchmark.
+Uses equal-weight sector ETFs to compute 10-day RS vs SPY benchmark (2 calendar weeks). This shorter window captures who is leading the current move rather than being anchored to older market regimes.
 
 #### RS Participation: How many sectors beat SPY (-20 to +25 pts)
 
