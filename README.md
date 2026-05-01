@@ -11,7 +11,7 @@ Pulls data from Yahoo Finance (S&P 500 breadth, sector ETFs, VIX, Treasury yield
 | Category | Weight | Key Indicators |
 |----------|--------|----------------|
 | **Volatility** | 20% | VIX level, VIX vs 20d MA, VIX term structure, intraday range |
-| **Momentum** | 20% | 25-day relative strength, sector rotation, RS participation |
+| **Momentum** | 20% | 10-day relative strength, sector rotation, RS participation |
 | **Trend** | 20% | SPY vs moving averages (8/21/50/200d), QQQ trend, slope |
 | **Breadth** | 30% | % above 50d/200d MA, A/D ratio, 52-week highs/lows, 4% burst ratio, 10% study, quarterly breadth |
 | **Macro** | 10% | 10Y yield trend, DXY trend, yield/equity divergence |
@@ -26,7 +26,7 @@ Each indicator has a hover tooltip explaining what it measures and why it matter
 **Market Breadth** — Google Sheets-powered breadth table with conditional formatting
 ![Market Breadth](img/Market%20Breadth.png)
 
-**Relative Strength** — 25-day RS histogram with sector rotation analysis
+**Relative Strength** — 10-day RS histogram with sector rotation analysis
 ![Relative Strength](img/Relative%20Strength%20(Light).png)
 
 **Relative Rotation Graph (RRG)** — sector momentum and rotation visualization

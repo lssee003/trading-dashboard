@@ -98,17 +98,17 @@ export const tooltipContent: Record<string, TooltipEntry> = {
   },
 
   // ── Momentum ──
-  "25d Leaders": {
+  "10d Leaders": {
     title: "Sector Leaders",
-    text: "Top 2 sectors by 25-day relative strength vs SPY. Shows where institutional money is flowing. Cyclical leaders (Tech, Discretionary) = risk-on. Defensive leaders (Utilities, Staples) = risk-off.",
+    text: "Top 2 sectors by 10-day relative strength vs SPY. Shows where money is flowing in the current move. Cyclical leaders (Tech, Discretionary) = risk-on. Defensive leaders (Utilities, Staples) = risk-off.",
   },
-  "25d Laggards": {
+  "10d Laggards": {
     title: "Sector Laggards",
-    text: "Bottom 2 sectors by relative strength. Avoid breakout setups in lagging sectors \u2014 they lack institutional support and follow-through.",
+    text: "Bottom 2 sectors by 10-day relative strength. Avoid breakout setups in lagging sectors \u2014 they lack participation and follow-through in the current move.",
   },
-  "Beating SPY": {
+  "Beating SPY (10d)": {
     title: "Sector Participation",
-    text: "How many of 11 sectors outperform SPY over 25 days. 7+/11 = broad participation, press risk. <4/11 = narrow market, only trade leading sectors.",
+    text: "How many of 11 sectors outperform SPY over the past 10 trading days (2 weeks). 7+/11 = broad participation, press risk. <4/11 = narrow market, only trade leading sectors.",
   },
   "Rotation": {
     title: "Sector Rotation",
