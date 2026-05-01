@@ -10,17 +10,9 @@ import path from "path";
 import { fetchDashboardData } from "../server/marketData";
 import { fetchRelativeStrength } from "../server/rsData";
 import { fetchGoogleSheetData } from "../server/sheetsData";
+import { RS_SYMBOLS } from "../shared/rsSymbols";
 
 const OUT_DIR = path.resolve("client/public/data");
-
-const RS_SYMBOLS = [
-  "SPY","FXI","GXC","FFTY","XHB","RSPT","CIBR","PBJ","XRT","RSPS",
-  "IBUY","RSPR","DRIV","WCLD","PEJ","XTL","XSW","KIE","QQQE","IPAY",
-  "USO","RSPD","KCE","RSP","ROBO","GNR","BOAT","XOP","FCG","BUZZ",
-  "XHS","PAVE","RSPH","MOO","RSPF","RSPN","KBE","GBTC","XTN","RSPG",
-  "XBI","BLOK","RSPC","RSPU","XSD","IWM","RSPM","XHE","XPH","KRE",
-  "XAR","XES","COPX","PBW","XME","SLX","JETS",
-];
 
 async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
