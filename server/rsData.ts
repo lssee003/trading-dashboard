@@ -10,6 +10,8 @@ const ETF_META: Record<string, { name: string; category: "Index" | "Sector" | "I
   SPY: { name: "S&P 500", category: "Index" },
   RSP: { name: "S&P 500 Equal Wt", category: "Index" },
   IWM: { name: "Russell 2000", category: "Index" },
+  IWC: { name: "Micro-Cap", category: "Index" },
+  IJH: { name: "S&P MidCap 400", category: "Index" },
   QQQE: { name: "Nasdaq-100 Equal Wt", category: "Index" },
   FFTY: { name: "IBD 50", category: "Index" },
   FXI: { name: "China Large-Cap", category: "Index" },
@@ -83,6 +85,7 @@ const ETF_META: Record<string, { name: string; category: "Index" | "Sector" | "I
   GLD:  { name: "Spot Gold", category: "Industry Group" },
   SLV:  { name: "Spot Silver", category: "Industry Group" },
   TAN:  { name: "Solar Energy", category: "Industry Group" },
+  PSIL: { name: "Psychedelics", category: "Industry Group" },
 };
 
 // ─── Cache ───
