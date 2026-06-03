@@ -27,14 +27,14 @@ export function AnalysisPanel({ summary, dataSource, terminalAnalysis }: Analysi
         style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
         data-testid="analysis-panel"
       >
-        <div className="flex items-center gap-2 mb-3">
-          <Brain className="w-3.5 h-3.5" style={{ color: "var(--terminal-cyan)" }} />
+        <div className="flex items-center gap-2 mb-3 section-header-scan rounded-sm px-1.5 py-1 -mx-1.5 -mt-1" style={{ "--scan-color": "rgba(2, 132, 199, 0.12)" } as React.CSSProperties}>
+          <Brain className="w-3.5 h-3.5 icon-power-on icon-power-on-d1" style={{ color: "var(--terminal-cyan)", "--icon-glow": "var(--terminal-cyan)" } as React.CSSProperties} />
           <h3 className="text-xs font-bold tracking-wider uppercase" style={{ color: "var(--terminal-cyan)" }}>
             Terminal Analysis
           </h3>
         </div>
-        <p className="text-sm leading-relaxed opacity-75">{summary}</p>
-        <div className="mt-auto pt-3 text-xs opacity-30" style={{ borderTop: "1px solid var(--terminal-border)" }}>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{summary}</p>
+        <div className="mt-auto pt-3 text-xs" style={{ borderTop: "1px solid var(--terminal-border)", color: 'var(--text-faint)' }}>
           {dataSource}
         </div>
       </div>
@@ -51,9 +51,9 @@ export function AnalysisPanel({ summary, dataSource, terminalAnalysis }: Analysi
       data-testid="analysis-panel"
     >
       {/* Header + Regime */}
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="flex items-center justify-between mb-2.5 section-header-scan rounded-sm px-1.5 py-1 -mx-1.5 -mt-1" style={{ "--scan-color": "rgba(2, 132, 199, 0.12)" } as React.CSSProperties}>
         <div className="flex items-center gap-2">
-          <Brain className="w-3.5 h-3.5" style={{ color: "var(--terminal-cyan)" }} />
+          <Brain className="w-3.5 h-3.5 icon-power-on icon-power-on-d1" style={{ color: "var(--terminal-cyan)", "--icon-glow": "var(--terminal-cyan)" } as React.CSSProperties} />
           <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: "var(--terminal-cyan)" }}>
             Terminal Analysis
           </span>
@@ -71,7 +71,7 @@ export function AnalysisPanel({ summary, dataSource, terminalAnalysis }: Analysi
 
       {/* Narrative */}
       <div className="flex-1 mb-2.5">
-        <p className="text-[11px] leading-[1.6] opacity-80">{narrative}</p>
+        <p className="text-[11px] leading-[1.6]" style={{ color: 'var(--text-secondary)' }}>{narrative}</p>
       </div>
 
       {/* Bounce alert */}
@@ -94,7 +94,7 @@ export function AnalysisPanel({ summary, dataSource, terminalAnalysis }: Analysi
         className="flex items-center gap-2 pt-2 mt-auto"
         style={{ borderTop: "1px solid var(--terminal-border)" }}
       >
-        <span className="text-[9px] font-bold tracking-wider opacity-40">STANCE</span>
+        <span className="text-[9px] font-bold tracking-wider" style={{ color: 'var(--text-muted)' }}>STANCE</span>
         <span
           className="text-[10px] font-bold"
           style={{ color: regimeColor }}

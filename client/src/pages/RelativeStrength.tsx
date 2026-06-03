@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useScrollHint } from "@/hooks/useScrollHint";
 import type { RSResponse, RSTickerData } from "@shared/schema";
 import { RSHistogram } from "../components/RSHistogram";
@@ -61,6 +61,48 @@ export default function RelativeStrength() {
   const [sortKey, setSortKey] = useState<SortKey>("rsVsBenchmark");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [viewMode, setViewMode] = useState<"table" | "rrg">("table");
+
+  // ─── Magnetic RRG button ───
+  const rrgBtnRef = useRef<HTMLButtonElement>(null);
+  const rrgWrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const wrap = rrgWrapRef.current;
+    const btn = rrgBtnRef.current;
+    if (!wrap || !btn) return;
+
+    const PULL = 6; // max px offset toward cursor
+    const RANGE = 80; // px radius of magnetic field
+
+    const onMove = (e: MouseEvent) => {
+      const rect = wrap.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < RANGE) {
+        const strength = 1 - dist / RANGE;
+        const tx = dx * strength * (PULL / RANGE) * 2;
+        const ty = dy * strength * (PULL / RANGE) * 2;
+        btn.style.transform = `translate(${tx}px, ${ty}px)`;
+      } else {
+        btn.style.transform = "";
+      }
+    };
+
+    const onLeave = () => {
+      btn.style.transform = "";
+    };
+
+    document.addEventListener("mousemove", onMove);
+    wrap.addEventListener("mouseleave", onLeave);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      wrap.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
 
   // Build query string
   const extraParam = extraTickers.length > 0 ? extraTickers.join(",") : "";
@@ -303,37 +345,26 @@ export default function RelativeStrength() {
                     Table
                   </button>
 
-                  {/* RRG button — standalone so glow box-shadow is never clipped */}
-                  <button
-                    onClick={() => { setViewMode("rrg"); setBenchmark("SPY"); setLookback(10); setCategoryFilter("Sector"); }}
-                    title="View Relative Rotation Graph"
-                    className="px-2 py-1 text-[11px] font-medium flex items-center gap-1 rounded"
-                    style={{
-                      background: viewMode === "rrg" ? "#0ea5e9" : "transparent",
-                      color: viewMode === "rrg" ? "#fff" : "#38bdf8",
-                      border: viewMode === "rrg" ? "1px solid #0ea5e9" : "1px solid #38bdf8",
-                      boxShadow: viewMode === "table"
-                        ? "0 0 12px 3px rgba(56,189,248,0.7), 0 0 4px 1px rgba(14,165,233,1)"
-                        : "none",
-                      transition: "box-shadow 0.2s, background 0.2s, filter 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (viewMode === "table") {
-                        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 20px 5px rgba(56,189,248,0.9), 0 0 6px 2px rgba(14,165,233,1)";
-                        (e.currentTarget as HTMLElement).style.filter = "brightness(1.25)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.filter = "";
-                      (e.currentTarget as HTMLElement).style.boxShadow = viewMode === "table"
-                        ? "0 0 12px 3px rgba(56,189,248,0.7), 0 0 4px 1px rgba(14,165,233,1)"
-                        : "none";
-                    }}
-                    data-testid="view-rrg"
-                  >
-                    <Orbit className="w-3 h-3" />
-                    RRG
-                  </button>
+                  {/* RRG button — magnetic pull + electric arc on hover */}
+                  <div ref={rrgWrapRef} className="relative rrg-magnetic-zone" style={{ padding: "4px" }}>
+                    <button
+                      ref={rrgBtnRef}
+                      onClick={() => { setViewMode("rrg"); setBenchmark("SPY"); setLookback(10); setCategoryFilter("Sector"); }}
+                      title="View Relative Rotation Graph"
+                      className={`rrg-overdrive-btn px-2.5 py-1 text-[11px] font-bold flex items-center gap-1.5 rounded relative overflow-hidden${viewMode === "table" ? " rrg-idle" : " rrg-active"}`}
+                      style={{
+                        background: viewMode === "rrg" ? "#0ea5e9" : "rgba(14, 165, 233, 0.08)",
+                        color: viewMode === "rrg" ? "#fff" : "#38bdf8",
+                        border: viewMode === "rrg" ? "1px solid #0ea5e9" : "1px solid rgba(56, 189, 248, 0.6)",
+                        transition: "box-shadow 0.3s cubic-bezier(.16,1,.3,1), background 0.2s, transform 0.2s cubic-bezier(.16,1,.3,1)",
+                        willChange: "transform",
+                      }}
+                      data-testid="view-rrg"
+                    >
+                      <Orbit className="w-3.5 h-3.5 rrg-orbit-icon" />
+                      RRG
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -68,9 +68,9 @@ export default function Dashboard() {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ background: "var(--terminal-bg)" }}>
         <div className="text-center p-8 rounded-lg border" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
-          <Activity className="w-12 h-12 mx-auto mb-4 opacity-40" />
+          <Activity className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
           <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA FEED ERROR</h2>
-          <p className="text-sm opacity-60 mb-4 max-w-md">{(error as Error)?.message || "Failed to connect to market data feed"}</p>
+          <p className="text-sm mb-4 max-w-md" style={{ color: 'var(--text-secondary)' }}>{(error as Error)?.message || "Failed to connect to market data feed"}</p>
           {!IS_STATIC && (
             <button
               onClick={handleRefresh}
@@ -177,7 +177,7 @@ export default function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="flex-shrink-0 px-4 py-2 text-center text-xs opacity-30 border-t" style={{ borderColor: "var(--terminal-border)" }}>
+      <footer className="flex-shrink-0 px-4 py-2 text-center text-xs border-t" style={{ borderColor: "var(--terminal-border)", color: 'var(--text-faint)' }}>
         {data?.dataSource || "Yahoo Finance (delayed ~15min)"} · For informational purposes only · Not financial advice
       </footer>
     </div>

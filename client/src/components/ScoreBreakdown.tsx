@@ -18,7 +18,7 @@ export function ScoreBreakdown({ categories, totalScore }: ScoreBreakdownProps) 
       style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
       data-testid="score-breakdown"
     >
-      <h3 className="text-xs font-bold tracking-wider uppercase opacity-70 mb-4">Scoring Breakdown</h3>
+      <h3 className="text-xs font-bold tracking-wider uppercase mb-4 section-header-scan rounded-sm px-1.5 py-1 -mx-1.5 -mt-1" style={{ color: 'var(--text-secondary)' }}>Scoring Breakdown</h3>
 
       <div className="space-y-3">
         {categories.map((cat) => {
@@ -29,13 +29,13 @@ export function ScoreBreakdown({ categories, totalScore }: ScoreBreakdownProps) 
           return (
             <div key={cat.name} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium opacity-60">{cat.name}</span>
+                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{cat.name}</span>
                 <div className="flex items-center gap-2">
-                  <span className="opacity-30">{cat.weight}% ×</span>
+                  <span style={{ color: 'var(--text-faint)' }}>{cat.weight}% ×</span>
                   <span className="font-bold" style={{ color: getScoreColor(cat.score) }}>
                     {cat.score}
                   </span>
-                  <span className="opacity-30">=</span>
+                  <span style={{ color: 'var(--text-faint)' }}>=</span>
                   <span className="font-bold" style={{ color: getScoreColor(cat.score) }}>
                     {contribution}
                   </span>
@@ -58,7 +58,7 @@ export function ScoreBreakdown({ categories, totalScore }: ScoreBreakdownProps) 
 
       {/* Total */}
       <div className="mt-5 pt-4 flex items-center justify-between" style={{ borderTop: "1px solid var(--terminal-border)" }}>
-        <span className="text-sm font-bold opacity-70">TOTAL SCORE</span>
+        <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>TOTAL SCORE</span>
         <span className="text-2xl font-black" style={{ color: getScoreColor(totalScore) }}>
           {totalScore}
         </span>
@@ -68,15 +68,15 @@ export function ScoreBreakdown({ categories, totalScore }: ScoreBreakdownProps) 
       <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
         <div className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full" style={{ background: "var(--terminal-green)" }} />
-          <span className="opacity-40">80+ YES</span>
+          <span style={{ color: 'var(--text-muted)' }}>80+ YES</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full" style={{ background: "var(--terminal-amber)" }} />
-          <span className="opacity-40">60-79 CAUTION</span>
+          <span style={{ color: 'var(--text-muted)' }}>60-79 CAUTION</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full" style={{ background: "var(--terminal-red)" }} />
-          <span className="opacity-40">&lt;60 NO</span>
+          <span style={{ color: 'var(--text-muted)' }}>&lt;60 NO</span>
         </div>
       </div>
     </div>

@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import type { CategoryScore, DashboardData } from "@shared/schema";
 import { Shield, TrendingUp, BarChart3, Rocket, Landmark } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 import { tooltipContent } from "../data/tooltipContent";
+
+const CATEGORY_DELAY: Record<string, number> = {
+  Volatility: 1,
+  Trend: 2,
+  Breadth: 3,
+  Momentum: 4,
+  Macro: 5,
+};
 
 const CATEGORY_ICONS: Record<string, typeof Shield> = {
   Volatility: Shield,
@@ -104,6 +112,68 @@ const STATE_LABELS: Record<string, string> = {
   NORMAL: "Normal",
 };
 
+function PillToggle<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { label: string; value: T }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [sliderStyle, setSliderStyle] = useState<React.CSSProperties>({ opacity: 0 });
+  const activeIndex = options.findIndex((o) => o.value === value);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const buttons = container.querySelectorAll<HTMLButtonElement>("button");
+    const activeBtn = buttons[activeIndex];
+    if (!activeBtn) return;
+    setSliderStyle({
+      transform: `translateX(${activeBtn.offsetLeft}px)`,
+      width: activeBtn.offsetWidth,
+      height: activeBtn.offsetHeight,
+      opacity: 1,
+    });
+  }, [activeIndex]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex rounded overflow-hidden"
+      style={{ border: "1px solid var(--terminal-border)" }}
+    >
+      <div
+        className="absolute top-0 left-0 rounded"
+        style={{
+          background: "var(--terminal-surface-2)",
+          ...sliderStyle,
+          transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s ease, opacity 0.2s ease",
+        }}
+      />
+      {options.map((opt) => (
+        <button
+          key={opt.label}
+          onClick={() => onChange(opt.value)}
+          className="relative z-10 px-1.5 py-0 font-bold transition-colors duration-200"
+          style={{
+            fontSize: "9px",
+            lineHeight: "18px",
+            background: "transparent",
+            color: opt.value === value ? "var(--text-primary)" : "var(--terminal-dim)",
+            cursor: "pointer",
+            border: "none",
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function BurstRow({ burst }: { burst: BurstData }) {
   const [view, setView] = useState<"5d" | "10d">("10d");
   const d = burst.data[view];
@@ -114,7 +184,7 @@ function BurstRow({ burst }: { burst: BurstData }) {
     <div className="text-xs min-w-0">
       <div className="flex items-center justify-between gap-1 min-w-0">
         {/* Left: Label + Toggle */}
-        <span className="flex items-center gap-1.5 flex-shrink-0 opacity-50 min-w-0">
+        <span className="flex items-center gap-1.5 flex-shrink-0 min-w-0" style={{ color: 'var(--text-muted)' }}>
           <span
             className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ background: color }}
@@ -126,38 +196,23 @@ function BurstRow({ burst }: { burst: BurstData }) {
           ) : (
             <span className="truncate">4% Burst</span>
           )}
-          <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
-            {(["5D", "10D"] as const).map((label) => {
-              const val = label.toLowerCase() as "5d" | "10d";
-              const active = view === val;
-              return (
-                <button
-                  key={label}
-                  onClick={() => setView(val)}
-                  className="px-1.5 py-0 font-bold transition-colors duration-200"
-                  style={{
-                    fontSize: "9px",
-                    lineHeight: "18px",
-                    background: active ? "var(--terminal-blue)" : "transparent",
-                    color: active ? "#fff" : "var(--terminal-dim)",
-                    cursor: "pointer",
-                    border: "none",
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+          <PillToggle
+            options={[
+              { label: "5D", value: "5d" as const },
+              { label: "10D", value: "10d" as const },
+            ]}
+            value={view}
+            onChange={setView}
+          />
         </span>
 
-        {/* Right: Descriptive + Number + Arrow (flush right) */}
+        {/* Right: Rolling counts + Ratio + Arrow (flush right) */}
         <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
           <span
             className="font-medium whitespace-nowrap transition-all duration-300"
             style={{ color, opacity: 0.65, fontSize: "10px" }}
           >
-            {d.breakouts}/{d.breakdowns}
+            ↑{d.breakouts}/↓{d.breakdowns}
           </span>
           <span
             className="font-medium whitespace-nowrap transition-all duration-300"
@@ -183,7 +238,7 @@ function Momentum20dRow({ data }: { data: Momentum20dData }) {
     <div className="text-xs min-w-0">
       <div className="flex items-center justify-between gap-1 min-w-0">
         {/* Left: Label */}
-        <span className="flex items-center gap-1 flex-shrink-0 opacity-50 min-w-0">
+        <span className="flex items-center gap-1 flex-shrink-0 min-w-0" style={{ color: 'var(--text-muted)' }}>
           <span
             className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ background: color }}
@@ -232,7 +287,7 @@ function BreadthToggleRow({ data }: { data: BreadthToggleData }) {
     <div className="text-xs min-w-0">
       <div className="flex items-center justify-between gap-1 min-w-0">
         {/* Left: Label + Toggle */}
-        <span className="flex items-center gap-1.5 flex-shrink-0 opacity-50 min-w-0">
+        <span className="flex items-center gap-1.5 flex-shrink-0 min-w-0" style={{ color: 'var(--text-muted)' }}>
           <span
             className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ background: color }}
@@ -244,42 +299,21 @@ function BreadthToggleRow({ data }: { data: BreadthToggleData }) {
           ) : (
             <span className="truncate">Breadth</span>
           )}
-          <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
-            {(["MTH", "QTR"] as const).map((lbl) => {
-              const val = lbl.toLowerCase() as "mth" | "qtr";
-              const active = view === val;
-              return (
-                <button
-                  key={lbl}
-                  onClick={() => setView(val)}
-                  className="px-1.5 py-0 font-bold transition-colors duration-200"
-                  style={{
-                    fontSize: "9px",
-                    lineHeight: "18px",
-                    background: active ? "var(--terminal-blue)" : "transparent",
-                    color: active ? "#fff" : "var(--terminal-dim)",
-                    cursor: "pointer",
-                    border: "none",
-                  }}
-                >
-                  {lbl}
-                </button>
-              );
-            })}
-          </div>
+          <PillToggle
+            options={[
+              { label: "MTH", value: "mth" as const },
+              { label: "QTR", value: "qtr" as const },
+            ]}
+            value={view}
+            onChange={setView}
+          />
         </span>
 
-        {/* Right: Descriptive + Numbers + Arrow (flush right) */}
+        {/* Right: Up/Down + Net + Arrow (flush right) */}
         <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
           <span
             className="font-medium whitespace-nowrap transition-all duration-300"
             style={{ color, opacity: 0.65, fontSize: "10px" }}
-          >
-            {label}
-          </span>
-          <span
-            className="font-medium whitespace-nowrap transition-all duration-300"
-            style={{ color, opacity: 0.5, fontSize: "9px" }}
           >
             ↑{d.up}/↓{d.down}
           </span>
@@ -312,18 +346,20 @@ export function CategoryPanel({ category, burst, momentum20d, breadthToggle }: C
 
   return (
     <div
-      className="rounded-lg p-3 border flex flex-col"
-      style={{
-        background: "var(--terminal-surface)",
-        borderColor: "var(--terminal-border)",
-      }}
+      className="category-panel rounded-lg p-3 flex flex-col"
       data-testid={`panel-${category.name.toLowerCase()}`}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Header — scan-line + signal glow */}
+      <div
+        className="flex items-center justify-between mb-2 rounded-sm px-1.5 py-1 -mx-1.5 -mt-1 category-header-glow section-header-scan"
+        style={{ "--signal-glow": scoreColor, "--scan-color": `${scoreColor}18` } as React.CSSProperties}
+      >
         <div className="flex items-center gap-2">
-          <Icon className="w-3.5 h-3.5 opacity-40" />
-          <span className="text-xs font-bold tracking-wider uppercase opacity-70">{category.name}</span>
+          <Icon
+            className={`w-3.5 h-3.5 icon-power-on icon-power-on-d${CATEGORY_DELAY[category.name] || 1}`}
+            style={{ color: scoreColor, "--icon-glow": scoreColor } as React.CSSProperties}
+          />
+          <span className="text-xs font-bold tracking-wider uppercase" style={{ color: 'var(--text-secondary)' }}>{category.name}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-bold" style={{ color: scoreColor }}>
@@ -371,7 +407,7 @@ export function CategoryPanel({ category, burst, momentum20d, breadthToggle }: C
           return (
             <div key={idx} className="flex items-center justify-between text-xs gap-1 min-w-0">
               {/* Left: Label */}
-              <span className="flex items-center gap-1 flex-shrink-0 opacity-50 min-w-0">
+              <span className="flex items-center gap-1 flex-shrink-0 min-w-0" style={{ color: 'var(--text-muted)' }}>
                 <span
                   className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
                   style={{ background: SIGNAL_COLORS[detail.signal] || "var(--terminal-dim)" }}
@@ -421,8 +457,8 @@ export function CategoryPanel({ category, burst, momentum20d, breadthToggle }: C
 
       {/* Weight indicator */}
       <div className="mt-2 pt-2 flex items-center justify-between text-xs" style={{ borderTop: "1px solid var(--terminal-border)" }}>
-        <span className="opacity-30">Weight</span>
-        <span className="opacity-40 font-medium">{category.weight}%</span>
+        <span style={{ color: 'var(--text-faint)' }}>Weight</span>
+        <span className="font-medium" style={{ color: 'var(--text-muted)' }}>{category.weight}%</span>
       </div>
     </div>
   );

@@ -24,16 +24,16 @@ export function SectorHeatmap({ sectors }: SectorHeatmapProps) {
       style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
       data-testid="sector-heatmap"
     >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-bold tracking-wider uppercase opacity-70">Daily Sector Performance</h3>
+      <div className="flex items-center justify-between mb-4 section-header-scan rounded-sm px-1.5 py-1 -mx-1.5 -mt-1">
+        <h3 className="text-xs font-bold tracking-wider uppercase" style={{ color: 'var(--text-secondary)' }}>Daily Sector Performance</h3>
         <div className="flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full" style={{ background: "var(--terminal-green)" }} />
-            <span className="opacity-40">Leaders</span>
+            <span style={{ color: 'var(--text-muted)' }}>Leaders</span>
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full" style={{ background: "var(--terminal-red)" }} />
-            <span className="opacity-40">Laggards</span>
+            <span style={{ color: 'var(--text-muted)' }}>Laggards</span>
           </span>
         </div>
       </div>
@@ -49,7 +49,7 @@ export function SectorHeatmap({ sectors }: SectorHeatmapProps) {
             <div key={sector.symbol} className="flex items-center gap-2 text-xs" data-testid={`sector-${sector.symbol}`}>
               {/* Label */}
               <div className="w-16 flex-shrink-0 flex items-center gap-1">
-                <span className="font-bold opacity-70">{sector.symbol}</span>
+                <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>{sector.symbol}</span>
                 {isLeader && (
                   <span style={{ color: "var(--terminal-green)", fontSize: "10px" }}>★</span>
                 )}
@@ -71,7 +71,7 @@ export function SectorHeatmap({ sectors }: SectorHeatmapProps) {
                   }}
                 />
                 <div className="absolute inset-0 flex items-center px-2 justify-between">
-                  <span className="opacity-40 text-xs truncate">{sector.name}</span>
+                  <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{sector.name}</span>
                   <span
                     className="font-bold text-xs"
                     style={{ color: getBarColor(sector.changePercent) }}

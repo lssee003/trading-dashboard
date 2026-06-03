@@ -26,7 +26,7 @@ function TickerItem({ ticker }: { ticker: MarketQuote }) {
 
   return (
     <span className="inline-flex items-center gap-1.5 text-xs" data-testid={`ticker-${ticker.symbol}`}>
-      <span className="font-bold opacity-70">{ticker.symbol}</span>
+      <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>{ticker.symbol}</span>
       <span style={{ color }}>{ticker.price.toFixed(2)}</span>
       <span style={{ color, fontSize: "10px" }}>
         {arrow} {Math.abs(ticker.changePercent).toFixed(2)}%

@@ -47,6 +47,10 @@ async function fetchSheetsBreadthData(): Promise<SheetsBreadthData | null> {
     // Sheet is ordered newest-first: valid[0] = most recent trading day
     const latest = valid[0];
 
+    // Sum UP_4/DOWN_4 across last N rows for rolling 5d/10d counts
+    const sumCol = (col: number, n: number) =>
+      valid.slice(0, n).reduce((s, row) => s + (sheetNum(row, col) ?? 0), 0);
+
     const result: SheetsBreadthData = {
       up25q:      sheetNum(latest, SCOL.UP_25Q)  ?? 0,
       down25q:    sheetNum(latest, SCOL.DOWN_25Q) ?? 0,
@@ -54,11 +58,10 @@ async function fetchSheetsBreadthData(): Promise<SheetsBreadthData | null> {
       down25m:    sheetNum(latest, SCOL.DOWN_25M) ?? 0,
       ratio5d:    sheetNum(latest, SCOL.RATIO_5D)  ?? 1,
       ratio10d:   sheetNum(latest, SCOL.RATIO_10D) ?? 1,
-      // Today's counts — ratio is the sheet's precomputed rolling metric
-      breakouts5d:  sheetNum(latest, SCOL.UP_4) ?? 0,
-      breakdowns5d: sheetNum(latest, SCOL.DOWN_4) ?? 0,
-      breakouts10d: sheetNum(latest, SCOL.UP_4) ?? 0,
-      breakdowns10d: sheetNum(latest, SCOL.DOWN_4) ?? 0,
+      breakouts5d:  sumCol(SCOL.UP_4, 5),
+      breakdowns5d: sumCol(SCOL.DOWN_4, 5),
+      breakouts10d: sumCol(SCOL.UP_4, 10),
+      breakdowns10d: sumCol(SCOL.DOWN_4, 10),
       t2108:  sheetNum(latest, SCOL.T2108)  ?? 50,
       up50m:  sheetNum(latest, SCOL.UP_50M) ?? 0,
       down50m: sheetNum(latest, SCOL.DOWN_50M) ?? 0,
