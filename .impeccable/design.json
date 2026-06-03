@@ -1,0 +1,237 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-03T17:00:00Z",
+  "title": "Design System: 5 Stars Setup — Market Dashboard",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Terminal Cyan",
+        "canonical": "oklch(51% 0.11 220)",
+        "darkVariant": "#1AA2E5",
+        "tonalRamp": ["oklch(20% 0.06 220)", "oklch(30% 0.09 220)", "oklch(40% 0.11 220)", "oklch(51% 0.11 220)", "oklch(62% 0.10 220)", "oklch(73% 0.08 220)", "oklch(83% 0.05 220)", "oklch(93% 0.02 220)"]
+      },
+      "signal-bullish": {
+        "role": "semantic",
+        "displayName": "Signal Bullish",
+        "canonical": "oklch(55% 0.18 145)",
+        "darkVariant": "#00E676",
+        "semanticMeaning": "YES — market favorable, full position sizing",
+        "tonalRamp": ["oklch(20% 0.12 145)", "oklch(30% 0.15 145)", "oklch(40% 0.17 145)", "oklch(55% 0.18 145)", "oklch(67% 0.16 145)", "oklch(77% 0.12 145)", "oklch(86% 0.08 145)", "oklch(94% 0.04 145)"]
+      },
+      "signal-bearish": {
+        "role": "semantic",
+        "displayName": "Signal Bearish",
+        "canonical": "oklch(53% 0.22 25)",
+        "darkVariant": "#FF1744",
+        "semanticMeaning": "NO — avoid risk, preserve capital",
+        "tonalRamp": ["oklch(20% 0.14 25)", "oklch(30% 0.17 25)", "oklch(40% 0.20 25)", "oklch(53% 0.22 25)", "oklch(65% 0.19 25)", "oklch(75% 0.15 25)", "oklch(84% 0.10 25)", "oklch(93% 0.05 25)"]
+      },
+      "signal-neutral": {
+        "role": "semantic",
+        "displayName": "Signal Neutral",
+        "canonical": "oklch(63% 0.18 68)",
+        "darkVariant": "#FFAB00",
+        "semanticMeaning": "CAUTION — half size, A+ setups only",
+        "tonalRamp": ["oklch(22% 0.10 68)", "oklch(33% 0.14 68)", "oklch(44% 0.16 68)", "oklch(63% 0.18 68)", "oklch(73% 0.16 68)", "oklch(81% 0.13 68)", "oklch(89% 0.09 68)", "oklch(95% 0.04 68)"]
+      },
+      "bg-light": {
+        "role": "neutral",
+        "displayName": "Ice White",
+        "canonical": "oklch(98% 0.006 220)",
+        "note": "Cool-tinted near-white. Never warm."
+      },
+      "surface-light": {
+        "role": "neutral",
+        "displayName": "Terminal White"
+      },
+      "surface-alt-light": {
+        "role": "neutral",
+        "displayName": "Frost"
+      },
+      "border-light": {
+        "role": "neutral",
+        "displayName": "Steel Mist"
+      },
+      "bg-dark": {
+        "role": "neutral",
+        "displayName": "Terminal Black",
+        "canonical": "oklch(10% 0.02 245)",
+        "note": "Deep navy-black — not charcoal gray."
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Charcoal"
+      },
+      "surface-alt-dark": {
+        "role": "neutral",
+        "displayName": "Deep Navy"
+      },
+      "border-dark": {
+        "role": "neutral",
+        "displayName": "Navy Border",
+        "note": "Blue-tinted border, not neutral gray — maintains terminal palette coherence."
+      },
+      "text-ink": {
+        "role": "neutral",
+        "displayName": "Ink"
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Slate"
+      },
+      "text-dim": {
+        "role": "neutral",
+        "displayName": "Dim"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Score circle numbers, hero metrics. The largest number on screen. One per view."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Decision label (YES / CAUTION / NO). All-caps. One per page."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headers, category names. All-caps, short."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Indicator rows, data values, timestamps. Primary reading text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Micro labels, badge text, sub-category markers. All-caps, ≤4 words."
+      }
+    },
+    "shadows": [
+      { "name": "resting-surface", "value": "0 1px 3px rgba(0,0,0,0.06)", "purpose": "Cards on the light-theme background. Minimum separation." },
+      { "name": "interactive-overlay", "value": "0 2px 8px rgba(0,0,0,0.08)", "purpose": "Dropdown menus, popovers, open panels." },
+      { "name": "deep-overlay", "value": "0 4px 16px rgba(0,0,0,0.08)", "purpose": "Modals and pinned panels." },
+      { "name": "tooltip-depth", "value": "0 8px 24px rgba(0,0,0,0.9)", "purpose": "Tooltips — intentionally heavy to float above any surface in both themes." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default state transitions." },
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Score circle fill animation and panel entrances." },
+      { "name": "ticker-scroll", "value": "ticker-scroll 60s linear infinite", "purpose": "Ticker bar continuous scroll. Pauses on prefers-reduced-motion." },
+      { "name": "score-fill-duration", "value": "1200ms", "purpose": "Score circle stroke-dashoffset animation on mount." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px", "note": "Mobile nav collapses to dropdown below this width." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Nav Tab — Active",
+      "kind": "nav",
+      "refersTo": "nav-tab-active",
+      "description": "Selected navigation tab. Solid accent fill, white text, icon + all-caps label. One active tab at a time.",
+      "html": "<div class=\"ds-nav-tab ds-nav-tab-active\"><svg class=\"ds-nav-icon\" xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"22 12 18 12 15 21 9 3 6 12 2 12\"/></svg>MARKET MONITOR</div>",
+      "css": ".ds-nav-tab { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 3px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; } .ds-nav-tab-active { background-color: #1481B8; color: #ffffff; border: none; } .ds-nav-icon { width: 14px; height: 14px; flex-shrink: 0; }"
+    },
+    {
+      "name": "Nav Tab — Inactive",
+      "kind": "nav",
+      "refersTo": "nav-tab-inactive",
+      "description": "Unselected navigation tab. Transparent background, dim text, thin border. Transitions to slight opacity change on hover.",
+      "html": "<a class=\"ds-nav-tab ds-nav-tab-inactive\" href=\"#\"><svg class=\"ds-nav-icon\" xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"7\" height=\"18\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\"/></a>",
+      "css": ".ds-nav-tab { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 3px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; text-decoration: none; } .ds-nav-tab-inactive { background-color: transparent; color: #94A3B8; border: 1px solid #E2E8F0; transition: opacity 0.15s ease; } .ds-nav-tab-inactive:hover { opacity: 0.75; } .ds-nav-icon { width: 14px; height: 14px; flex-shrink: 0; }"
+    },
+    {
+      "name": "Signal Chip — Bullish",
+      "kind": "chip",
+      "refersTo": "signal-chip-bullish",
+      "description": "Status badge for bullish indicators. Tinted green background, full green text. Never a solid fill.",
+      "html": "<span class=\"ds-chip ds-chip-bullish\">BULLISH</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; } .ds-chip-bullish { background-color: #DCFCE7; color: #16A34A; }"
+    },
+    {
+      "name": "Signal Chip — Bearish",
+      "kind": "chip",
+      "refersTo": "signal-chip-bearish",
+      "description": "Status badge for bearish indicators. Tinted red background, full red text.",
+      "html": "<span class=\"ds-chip ds-chip-bearish\">BEARISH</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; } .ds-chip-bearish { background-color: #FEE2E2; color: #DC2626; }"
+    },
+    {
+      "name": "Signal Chip — Neutral",
+      "kind": "chip",
+      "refersTo": "signal-chip-neutral",
+      "description": "Status badge for neutral/caution indicators. Tinted amber background, full amber text.",
+      "html": "<span class=\"ds-chip ds-chip-neutral\">CAUTION</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; } .ds-chip-neutral { background-color: #FEF3C7; color: #D97706; }"
+    },
+    {
+      "name": "Decision Panel — YES",
+      "kind": "custom",
+      "refersTo": "surface-card",
+      "description": "The primary verdict element. Tinted green border and background. Score + verdict label + sub-label. Most prominent element on the Monitor page.",
+      "html": "<div class=\"ds-decision ds-decision-yes\"><div class=\"ds-decision-score\">78</div><div class=\"ds-decision-verdict\">YES</div><div class=\"ds-decision-sublabel\">Full position sizing, press risk</div></div>",
+      "css": ".ds-decision { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 24px; border-radius: 6px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; } .ds-decision-yes { background-color: rgba(22, 163, 74, 0.06); border: 1px solid rgba(22, 163, 74, 0.20); } .ds-decision-score { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -0.01em; color: #16A34A; } .ds-decision-verdict { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #16A34A; } .ds-decision-sublabel { font-size: 10px; font-weight: 400; letter-spacing: 0.01em; color: #64748B; text-align: center; margin-top: 2px; }"
+    },
+    {
+      "name": "Surface Card",
+      "kind": "card",
+      "refersTo": "surface-card",
+      "description": "Standard data panel. Flat white surface, thin border, subtle ambient shadow (light mode only). Groups related indicators.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">BREADTH</div><div class=\"ds-card-body\">Market indicator data appears here in body-size monospace rows with signal chips inline.</div></div>",
+      "css": ".ds-card { background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; } .ds-card-title { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #0F172A; margin-bottom: 12px; } .ds-card-body { font-size: 11.5px; font-weight: 400; line-height: 1.5; letter-spacing: 0.01em; color: #64748B; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "High-priority action (Retry Connection, primary CTA). Accent fill, white text. Used sparingly — only for critical actions.",
+      "html": "<button class=\"ds-btn-primary\">Retry Connection</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 6px; border: none; background-color: #1481B8; color: #ffffff; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 11.5px; font-weight: 700; letter-spacing: 0.03em; cursor: pointer; transition: opacity 0.15s ease; } .ds-btn-primary:hover { opacity: 0.88; } .ds-btn-primary:focus-visible { outline: 2px solid #1481B8; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Cockpit Instrument Panel",
+    "overview": "Every gauge has a fixed home. Every reading is where it was yesterday and will be tomorrow. The layout never surprises you — only the data does. This dashboard exists so that a swing trader at 8 AM can read the market's verdict — YES, CAUTION, or NO — before their first coffee is cold.\n\nThe system runs two professional themes that share a single identity. Light mode follows TradingView Professional: cool near-white, controlled blue accents, signal colors at full saturation. Dark mode follows Bloomberg Terminal: deep navy-black, electric signal colors, the density of a live data feed. Both themes use JetBrains Mono at every size and weight. Monospace is not a stylistic choice — it is the credential.\n\nDesign restraint is structural doctrine. No gradients. No decorative color. The signal colors — green, red, amber — belong exclusively to market signals. This system rejects the generic SaaS card-grid aesthetic and the cluttered editorial layout of news-finance sites. Neither has a decision architecture. This one does.",
+    "keyCharacteristics": [
+      "Monospace throughout — JetBrains Mono at every role, never a second family",
+      "Dual professional themes: TradingView light / Bloomberg dark, independently WCAG AA",
+      "Three semantic signal colors that map exactly to YES / CAUTION / NO — never decorative",
+      "Dense, stable layout — same structure every pre-market session",
+      "Near-zero rounding (3–9px) — no consumer softness",
+      "Elevation through tonal layering and thin borders, not decorative shadow"
+    ],
+    "rules": [
+      { "name": "The One Signal Rule", "body": "Green, red, and amber are market signals. Never brand color, never decorative accent. When green appears, it means bullish. Always.", "section": "colors" },
+      { "name": "The Restraint Rule", "body": "The accent color covers ≤15% of any screen. Navigation tabs, focus rings, live-indicator dots only. Its scarcity makes it an affordance marker.", "section": "colors" },
+      { "name": "The Cool Neutrals Rule", "body": "Light mode backgrounds are cool-tinted, never warm. If a background reads as cream, sand, or warm-white, it is wrong.", "section": "colors" },
+      { "name": "The One Family Rule", "body": "No second font family is ever introduced. Adjust weight and size within JetBrains Mono instead.", "section": "typography" },
+      { "name": "The Tabular Numbers Rule", "body": "All numeric displays use font-variant-numeric: tabular-nums lining-nums. Proportional digit spacing is a defect.", "section": "typography" },
+      { "name": "The Tracked Caps Rule", "body": "All-caps text receives at minimum 0.06em letter-spacing. Untracked mono caps are cramped.", "section": "typography" },
+      { "name": "The Tonal Separation Rule", "body": "Reach for surface color first, border second, shadow last. A new panel does not need all three.", "section": "elevation" },
+      { "name": "The Dark Theme No-Shadow Rule", "body": "Do not add box-shadow to cards or panels in dark mode. Surfaces are defined by background color contrast against Terminal Black.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reserve green, red, and amber exclusively for market signals.",
+      "Do use JetBrains Mono for every text element.",
+      "Do apply font-variant-numeric: tabular-nums lining-nums to all numeric displays.",
+      "Do use low-opacity tinted backgrounds (not solid fills) for signal chips and decision panel tints.",
+      "Do keep the accent blue to ≤15% surface coverage.",
+      "Do establish surface hierarchy through background color and borders before reaching for shadow.",
+      "Do portal-render tooltips and dropdowns via fixed positioning or createPortal.",
+      "Do keep the YES/CAUTION/NO panel the most visually dominant element on the Monitor page.",
+      "Do make both light and dark themes independently WCAG AA compliant."
+    ],
+    "donts": [
+      "Don't introduce a second font family.",
+      "Don't use gradient fills on text or backgrounds.",
+      "Don't build equal-weight card grids with icon + heading + text tiles.",
+      "Don't use warm-tinted neutrals (cream, sand, ivory). The light theme is cool: Ice White #F8FAFC.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe.",
+      "Don't apply the accent blue to decorative elements, chart fills, or icon fills.",
+      "Don't borrow editorial or news-finance layout patterns.",
+      "Don't exceed 9px border-radius on any component.",
+      "Don't add shadow to dark-theme cards or panels.",
+      "Don't break the stable layout structure — layout surprises compete with data surprises."
+    ]
+  }
+}
