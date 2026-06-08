@@ -427,7 +427,7 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
                 <div><span style={{ color: "var(--text-muted)" }}>RS-Ratio </span>{tooltip.ticker.rsRatio.toFixed(2)}</div>
                 <div><span style={{ color: "var(--text-muted)" }}>RS-Momentum </span>{tooltip.ticker.rsMomentum.toFixed(2)}</div>
                 <div>
-                  <span style={{ color: "#6b7280" }}>Quadrant </span>
+                  <span style={{ color: "var(--text-muted)" }}>Quadrant </span>
                   <span style={{ color: QUADRANT_LABEL_COLOR[tooltip.ticker.quadrant], fontWeight: 700 }}>
                     {QUADRANT_META[tooltip.ticker.quadrant].label}
                   </span>

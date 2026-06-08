@@ -72,13 +72,13 @@ function OversoldDot() {
             lineHeight: "1.55",
             fontFamily: "inherit",
             letterSpacing: "0.01em",
-            background: "#0f1117",
-            border: "1px solid #f59e0b",
-            color: "#fde68a",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.9), 0 0 0 1px rgba(245,158,11,0.2)",
+            background: "var(--terminal-surface)",
+            border: "1px solid var(--alert-amber-border)",
+            color: "var(--text-primary)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.9)",
           }}
         >
-          <span style={{ display: "block", fontWeight: 700, color: "#f59e0b", marginBottom: "4px", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <span style={{ display: "block", fontWeight: 700, color: "var(--terminal-amber)", marginBottom: "4px", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Extreme Oversold
           </span>
           {OVERSOLD_TOOLTIP.replace("Extreme oversold. ", "")}

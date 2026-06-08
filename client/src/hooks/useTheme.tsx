@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 
 type Theme = "light" | "dark";
 
@@ -43,41 +44,57 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (persisted === "light" || persisted === "dark") {
       return persisted;
     }
-    // No persisted preference — use auto time-of-day
     return getAutoTheme();
   });
 
-  // On first render, check if there was a persisted choice (means user manually chose before)
   const [hadPersisted] = useState(() => {
     const p = readPersisted();
     return p === "light" || p === "dark";
   });
 
-  // Apply the theme class whenever theme changes
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+
   useEffect(() => {
     applyThemeClass(theme);
   }, [theme]);
 
-  // Auto time-of-day switching — only active when user hasn't manually toggled
+  // Auto time-of-day switching
   useEffect(() => {
     if (manuallySet || hadPersisted) return;
-
-    // Check every 60 seconds
     const interval = setInterval(() => {
-      const autoTheme = getAutoTheme();
-      setTheme(autoTheme);
+      setTheme(getAutoTheme());
     }, 60_000);
-
     return () => clearInterval(interval);
   }, [manuallySet, hadPersisted]);
 
   const toggleTheme = useCallback(() => {
     setManuallySet(true);
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
+
+    const next = themeRef.current === "dark" ? "light" : "dark";
+
+    // Use View Transitions API for a smooth cross-fade morph between themes.
+    // Falls back to instant swap if unsupported (Firefox) or reduced motion.
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
+    if (
+      doc.startViewTransition &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      const transition = doc.startViewTransition(() => {
+        // flushSync forces React to commit the DOM update synchronously
+        // so the View Transition API can diff old vs new snapshots correctly
+        flushSync(() => {
+          applyThemeClass(next);
+          setTheme(next);
+        });
+      });
+      transition.finished.catch(() => {});
       writePersisted(next);
-      return next;
-    });
+    } else {
+      applyThemeClass(next);
+      setTheme(next);
+      writePersisted(next);
+    }
   }, []);
 
   return (
