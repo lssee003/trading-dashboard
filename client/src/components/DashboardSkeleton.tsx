@@ -1,10 +1,10 @@
 export function DashboardSkeleton() {
   return (
-    <div className="max-w-[1600px] mx-auto space-y-4 animate-pulse">
-      {/* Hero skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 rounded-lg p-5 h-48 skeleton-terminal" />
-        <div className="rounded-lg p-4 h-48 skeleton-terminal" />
+    <div className="max-w-[1600px] mx-auto space-y-3 animate-pulse">
+      {/* Hero + Analysis skeleton — matches xl:grid-cols-5 layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-3">
+        <div className="xl:col-span-2 rounded-lg p-4 h-32 skeleton-terminal" />
+        <div className="xl:col-span-3 rounded-lg p-4 h-32 skeleton-terminal" />
       </div>
 
       {/* Category panels skeleton */}
@@ -14,10 +14,10 @@ export function DashboardSkeleton() {
         ))}
       </div>
 
-      {/* Bottom panels skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3 rounded-lg p-4 h-64 skeleton-terminal" />
-        <div className="lg:col-span-2 rounded-lg p-4 h-64 skeleton-terminal" />
+      {/* Bottom panels skeleton — matches xl:grid-cols-5 layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-3">
+        <div className="xl:col-span-3 rounded-lg p-4 h-64 skeleton-terminal" />
+        <div className="xl:col-span-2 rounded-lg p-4 h-64 skeleton-terminal" />
       </div>
     </div>
   );

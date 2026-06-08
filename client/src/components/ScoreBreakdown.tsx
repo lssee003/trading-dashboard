@@ -47,7 +47,6 @@ export function ScoreBreakdown({ categories, totalScore }: ScoreBreakdownProps) 
                   style={{
                     width: `${fillPct}%`,
                     background: getScoreColor(cat.score),
-                    opacity: 0.7,
                   }}
                 />
               </div>

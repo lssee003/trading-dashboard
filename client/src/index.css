@@ -560,6 +560,7 @@
   .icon-power-on { animation: none; filter: none; }
   .category-header-glow { animation: none; }
   .section-header-scan { animation: none; background-image: none; }
+  .ticker-animate { animation: none; }
   .rrg-overdrive-btn.rrg-idle { animation: none; box-shadow: 0 0 8px 2px rgba(56, 189, 248, 0.5); }
   .rrg-overdrive-btn.rrg-idle::after { animation: none !important; }
   .rrg-overdrive-btn .rrg-orbit-icon { animation: none !important; }
@@ -575,6 +576,59 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-glow { animation: none; opacity: 0.75; }
+}
+
+
+/* ── View Transition: theme switch morph ── */
+
+/* Whole-page cross-fade with a subtle brightness dip at midpoint */
+::view-transition-old(root) {
+  animation: theme-fade-out 350ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+::view-transition-new(root) {
+  animation: theme-fade-in 350ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes theme-fade-out {
+  0%   { opacity: 1; filter: brightness(1); }
+  40%  { opacity: 0.6; filter: brightness(0.85); }
+  100% { opacity: 0; filter: brightness(0.7); }
+}
+@keyframes theme-fade-in {
+  0%   { opacity: 0; filter: brightness(0.7); }
+  60%  { opacity: 0.6; filter: brightness(0.85); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+
+/* Theme toggle icon morphs independently with a spin */
+[data-testid="button-theme-toggle"] {
+  view-transition-name: theme-toggle;
+}
+
+::view-transition-old(theme-toggle) {
+  animation: theme-icon-out 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+::view-transition-new(theme-toggle) {
+  animation: theme-icon-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes theme-icon-out {
+  0%   { opacity: 1; transform: rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: rotate(-120deg) scale(0.4); }
+}
+@keyframes theme-icon-in {
+  0%   { opacity: 0; transform: rotate(120deg) scale(0.4); }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+
+/* Reduced motion: instant swap, no animation */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(theme-toggle),
+  ::view-transition-new(theme-toggle) {
+    animation: none !important;
+  }
 }
 
 /* Shimmer skeleton — light mode */

@@ -917,16 +917,16 @@ export default function GoogleSheets() {
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
-              <RefreshCw className="w-8 h-8 mx-auto mb-3 animate-spin opacity-40" />
-              <p className="text-sm opacity-60">Loading breadth data...</p>
+              <RefreshCw className="w-8 h-8 mx-auto mb-3 animate-spin" style={{ color: "var(--text-faint)" }} />
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading breadth data...</p>
             </div>
           </div>
         ) : isError ? (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center p-8 rounded-lg border" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
-              <Table className="w-12 h-12 mx-auto mb-4 opacity-40" />
+              <Table className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--text-faint)" }} />
               <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA LOAD ERROR</h2>
-              <p className="text-sm opacity-60 mb-4 max-w-md">{(error as Error)?.message || "Failed to load data"}</p>
+              <p className="text-sm mb-4 max-w-md" style={{ color: "var(--text-secondary)" }}>{(error as Error)?.message || "Failed to load data"}</p>
               {!IS_STATIC && (
                 <button onClick={handleRefresh} className="px-4 py-2 rounded text-sm font-medium" style={{ background: "var(--terminal-blue)", color: "#fff" }}>Retry</button>
               )}
@@ -967,7 +967,7 @@ export default function GoogleSheets() {
                     {breadthAnalysis.regime.label}
                   </span>
                 </div>
-                <span className="text-[10px] opacity-40">{showAnalysis ? "▲" : "▼"}</span>
+                <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{showAnalysis ? "▲" : "▼"}</span>
               </div>
             </div>
 
@@ -977,14 +977,14 @@ export default function GoogleSheets() {
               <div className="px-4 py-3 xl:border-r" style={{ borderColor: "var(--terminal-border)" }}>
                 {/* Primary Trend */}
                 <div className="mb-3">
-                  <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Primary Trend</span>
-                  <p className="text-[11px] leading-[1.5] mt-1 opacity-85">{breadthAnalysis.primaryTrend}</p>
+                  <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Primary Trend</span>
+                  <p className="text-[11px] leading-[1.5] mt-1" style={{ color: "var(--text-secondary)" }}>{breadthAnalysis.primaryTrend}</p>
                 </div>
 
                 {/* Key Signals */}
                 {breadthAnalysis.keySignals.length > 0 && (
                   <div>
-                    <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Key Signals</span>
+                    <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Key Signals</span>
                     <div className="mt-1.5 space-y-1.5">
                       {breadthAnalysis.keySignals.map((sig, i) => (
                         <div key={i} className="flex items-start gap-2">
@@ -1009,7 +1009,7 @@ export default function GoogleSheets() {
                             >
                               {sig.label}
                             </div>
-                            <div className="text-[10px] opacity-60 leading-[1.4]">{sig.detail}</div>
+                            <div className="text-[10px] leading-[1.4]" style={{ color: "var(--text-muted)" }}>{sig.detail}</div>
                           </div>
                         </div>
                       ))}
@@ -1023,12 +1023,12 @@ export default function GoogleSheets() {
                 {/* Significant Events */}
                 {breadthAnalysis.significantEvents.length > 0 && (
                   <div className="mb-3">
-                    <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Significant Events (Recent)</span>
+                    <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Significant Events (Recent)</span>
                     <div className="mt-1.5 space-y-1.5">
                       {breadthAnalysis.significantEvents.map((evt, i) => (
                         <div key={i} className="flex items-start gap-2">
-                          <span className="text-[10px] font-mono opacity-40 flex-shrink-0 mt-px">▸</span>
-                          <p className="text-[10px] leading-[1.5] opacity-75">
+                          <span className="text-[10px] font-mono flex-shrink-0 mt-px" style={{ color: "var(--text-faint)" }}>▸</span>
+                          <p className="text-[10px] leading-[1.5]" style={{ color: "var(--text-secondary)" }}>
                             {evt.date && (
                               <span className="inline-block font-mono font-bold text-[9px] px-1 py-px rounded mr-1.5 align-middle" style={{ background: "var(--terminal-cyan)", color: "var(--terminal-bg)", opacity: 0.9 }}>{evt.date}</span>
                             )}
@@ -1042,8 +1042,8 @@ export default function GoogleSheets() {
 
                 {/* Assessment */}
                 <div className="mb-3">
-                  <span className="text-[9px] font-bold tracking-wider uppercase opacity-40">Assessment</span>
-                  <p className="text-[11px] leading-[1.6] mt-1 opacity-85">{breadthAnalysis.assessment}</p>
+                  <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Assessment</span>
+                  <p className="text-[11px] leading-[1.6] mt-1" style={{ color: "var(--text-secondary)" }}>{breadthAnalysis.assessment}</p>
                 </div>
 
                 {/* Stance */}
@@ -1051,7 +1051,7 @@ export default function GoogleSheets() {
                   className="flex items-center gap-2 pt-2"
                   style={{ borderTop: "1px solid var(--terminal-border)" }}
                 >
-                  <span className="text-[9px] font-bold tracking-wider opacity-40">STANCE</span>
+                  <span className="text-[9px] font-bold tracking-wider" style={{ color: "var(--text-faint)" }}>STANCE</span>
                   <span className="text-[10px] font-bold" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
                     {breadthAnalysis.stance}
                   </span>
@@ -1121,8 +1121,8 @@ export default function GoogleSheets() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12">
-            <Table className="w-12 h-12 mb-4 opacity-20" />
-            <p className="text-sm opacity-60">No data available</p>
+            <Table className="w-12 h-12 mb-4" style={{ color: "var(--text-faint)" }} />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>No data available</p>
           </div>
         )}
       </main>
