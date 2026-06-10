@@ -5,10 +5,12 @@ import type { RSResponse, RSTickerData } from "@shared/schema";
 import { RSHistogram } from "../components/RSHistogram";
 import { RRGChart } from "../components/RRGChart";
 import { computeRRGData } from "@/lib/rrg";
+import { useViewTransitionNavigate } from "@/lib/viewTransition";
 import { useTheme } from "@/hooks/useTheme";
 import {
   RefreshCw, Search, Sun, Moon, X, Plus, Download,
   ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity, Table, Orbit,
+  ArrowUpRight,
 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
 import {
@@ -50,6 +52,7 @@ const RS_PULSE_TOOLTIP = "RS Pulse shows where today's RS ranks within the selec
 export default function RelativeStrength() {
   const rsTableRef = useScrollHint<HTMLDivElement>();
   const { theme, toggleTheme } = useTheme();
+  const navigateWithTransition = useViewTransitionNavigate();
 
   // Controls
   const [benchmark, setBenchmark] = useState("SPY");
@@ -492,6 +495,30 @@ export default function RelativeStrength() {
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
+
+              {/* AI Stack reference link — thematic-screening cheatsheet */}
+              <a
+                href="#/ai-stack"
+                onClick={(e) => { e.preventDefault(); navigateWithTransition("/ai-stack"); }}
+                className="ai-stack-link vt-ai-stack"
+                title="Open the AI infrastructure stack — 14-layer reference taxonomy"
+                data-testid="link-ai-stack"
+                aria-label="Open AI infrastructure stack reference"
+              >
+                <svg
+                  className="ai-stack-icon"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 14 14"
+                  aria-hidden="true"
+                >
+                  <rect className="bar bar-3" x="2" y="10.5" width="10" height="1.3" rx="0.3" />
+                  <rect className="bar bar-2" x="2" y="6.5"  width="10" height="1.3" rx="0.3" />
+                  <rect className="bar bar-1" x="2" y="2.5"  width="10" height="1.3" rx="0.3" />
+                </svg>
+                <span>AI Stack</span>
+                <ArrowUpRight className="ai-stack-arrow" width={12} height={12} />
+              </a>
             </div>
 
             {/* Extra tickers chips */}

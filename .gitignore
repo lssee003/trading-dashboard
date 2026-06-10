@@ -10,3 +10,4 @@ vite.config.ts.*
 .env
 .env.local
 .env.*.local
+.impeccable/critique/
