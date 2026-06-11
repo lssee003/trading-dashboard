@@ -200,7 +200,7 @@ export default function AIStack() {
                   AI Infrastructure Stack
                 </h1>
                 <p className="text-[11px] mt-2" style={{ color: "var(--text-muted)", lineHeight: 1.6, maxWidth: "62ch" }}>
-                  14 layers from raw materials to enterprise software · ~80 public tickers · capital-flow ordered.
+                  Key public players in each layer, with the closest ETF proxy. Stalk them on Relative Strength.
                 </p>
               </div>
 
@@ -392,13 +392,16 @@ export default function AIStack() {
                           <span
                             className="text-[10px] px-2 py-0.5 rounded font-bold tracking-wider"
                             style={{
-                              color: "var(--text-muted)",
+                              color: !isSearching && layer.etf ? "var(--terminal-cyan)" : "var(--text-muted)",
                               border: "1px solid var(--terminal-border)",
                               letterSpacing: "0.06em",
                               fontVariantNumeric: "tabular-nums lining-nums",
                             }}
+                            title={!isSearching && layer.etf ? `Closest ETF proxy: $${layer.etf}` : undefined}
                           >
-                            {layer.companies.length} {layer.companies.length === 1 ? "CO" : "COS"}
+                            {!isSearching && layer.etf
+                              ? `$${layer.etf}`
+                              : `${layer.companies.length} ${layer.companies.length === 1 ? "CO" : "COS"}`}
                           </span>
                           {isSearching ? (
                             <span

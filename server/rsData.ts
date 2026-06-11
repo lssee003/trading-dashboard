@@ -94,6 +94,8 @@ const ETF_META: Record<string, { name: string; category: "Index" | "Sector" | "I
   HYDR: { name: "Hydrogen & Fuel Cells", category: "Industry Group" },
   MEME: { name: "Meme Stocks", category: "Industry Group" },
   ARGT: { name: "Argentina Equities", category: "Index" },
+  FOTO: { name: "Photonics", category: "Industry Group" },
+  PAVE: { name: "Industrial Buildout", category: "Industry Group" },
 };
 
 // ─── Cache ───

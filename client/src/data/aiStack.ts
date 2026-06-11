@@ -8,6 +8,8 @@ export interface AIStackLayer {
   layer: string;
   label: string;
   sublabel: string;
+  /** Closest ETF proxy for the layer. Omit when no clean public ETF tracks the theme. */
+  etf?: string;
   companies: AIStackCompany[];
 }
 
@@ -21,6 +23,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L0",
     label: "RAW MATERIALS",
     sublabel: "Critical minerals, metals & nuclear fuel",
+    etf: "XME",
     companies: [
       { ticker: "CCJ", name: "Cameco", role: "Uranium — nuclear fuel for AI power plants" },
       { ticker: "UEC", name: "Uranium Energy", role: "Uranium mining & supply chain" },
@@ -34,6 +37,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L1",
     label: "POWER GENERATION",
     sublabel: "Gigawatts of always-on electricity for AI campuses",
+    etf: "NLR",
     companies: [
       { ticker: "CEG", name: "Constellation Energy", role: "Largest US nuclear fleet — PPAs with MSFT, Meta, Amazon" },
       { ticker: "VST", name: "Vistra", role: "Nuclear + gas — long-term hyperscaler contracts" },
@@ -47,6 +51,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L2",
     label: "GRID & ELECTRICAL INFRASTRUCTURE",
     sublabel: "Transmission, substations & high-voltage buildout",
+    etf: "GRID",
     companies: [
       { ticker: "PWR", name: "Quanta Services", role: "$44B backlog — transmission lines, grid interconnects" },
       { ticker: "EME", name: "EMCOR", role: "Record $4.3B network & comms backlog — data center electrical" },
@@ -60,6 +65,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L3",
     label: "DATA CENTER CONSTRUCTION",
     sublabel: "Physical campuses, site development & electrical fit-out",
+    etf: "PAVE",
     companies: [
       { ticker: "STRL", name: "Sterling Infrastructure", role: "Turnkey data center site dev — 92% revenue YoY, $3.8B 2026 guide" },
       { ticker: "PWR", name: "Quanta Services", role: "Full electrical path from power plant to server rack (also L2)" },
@@ -72,6 +78,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L4",
     label: "DATA CENTER REAL ESTATE",
     sublabel: "Physical buildings leased to hyperscalers under long-term contracts",
+    etf: "IDGT",
     companies: [
       { ticker: "EQIX", name: "Equinix", role: "Premium REIT — network exchanges, cloud on-ramps, interconnection" },
       { ticker: "DLR", name: "Digital Realty", role: "Largest pure-play DC REIT — lease pricing 30-50% above expiring" },
@@ -97,6 +104,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L6",
     label: "SEMICONDUCTOR FAB EQUIPMENT",
     sublabel: "The machines that make the chips — ASML is the ultimate chokepoint",
+    etf: "XSD",
     companies: [
       { ticker: "ASML", name: "ASML", role: "EUV lithography — only company that makes the machines that print advanced chips" },
       { ticker: "AMAT", name: "Applied Materials", role: "Deposition, etch, metrology — largest semi equipment co." },
@@ -110,6 +118,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L7",
     label: "SPECIALTY FOUNDRIES",
     sublabel: "Fabs that make analog, photonic & mixed-signal chips mainstream fabs won't touch",
+    etf: "XSD",
     companies: [
       { ticker: "TSM", name: "TSMC", role: "World's most advanced foundry — makes NVDA, AVGO, AMD, Apple chips" },
       { ticker: "TSEM", name: "Tower Semiconductor", role: "Silicon photonics foundry — $1.3B SiPho backlog; analog & RF specialist" },
@@ -122,6 +131,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L8",
     label: "CHIPS & SILICON",
     sublabel: "GPUs, custom ASICs, memory & inference chips",
+    etf: "XSD",
     companies: [
       { ticker: "NVDA", name: "Nvidia", role: "GPU monopoly — $216B revenue FY25; Blackwell → Rubin H2 2026" },
       { ticker: "AVGO", name: "Broadcom", role: "Custom ASICs (Google TPU, Meta) + AI ethernet — revenue doubling YoY" },
@@ -141,9 +151,11 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L9",
     label: "NETWORKING & INTERCONNECTS",
     sublabel: "High-speed switches, optical transceivers & co-packaged optics",
+    etf: "FOTO",
     companies: [
       { ticker: "ANET", name: "Arista Networks", role: "AI ethernet switches — $3.25B AI networking revenue 2026; MSFT, Meta, Oracle" },
       { ticker: "CIEN", name: "Ciena", role: "Optical networking systems — long-haul between data centers; triple-digit RS" },
+      { ticker: "GLW", name: "Corning", role: "Optical fiber & cable — physical AI data center backbone; Springboard plan targeting +$3B hyperscaler buildout" },
       { ticker: "LITE", name: "Lumentum", role: "Optical components — lasers, transceivers; triple-digit gains" },
       { ticker: "COHR", name: "Coherent", role: "Largest pure-play optical components co. with deep silicon photonics" },
       { ticker: "MACOM", name: "MACOM Tech", role: "High-speed analog & photonic semiconductors across DC optical chain" },
@@ -157,6 +169,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L10",
     label: "PCBs & ADVANCED PACKAGING",
     sublabel: "Circuit boards that chips mount on + advanced assembly",
+    etf: "AIQ",
     companies: [
       { ticker: "TTMI", name: "TTM Technologies", role: "PCBs for AI accelerators & defense — 80% revenue from AI/defense; +57% YoY DC" },
       { ticker: "SMCI", name: "Super Micro Computer", role: "AI server OEM — first to market with NVDA Blackwell & AMD MI300X servers" },
@@ -182,6 +195,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L12",
     label: "FOUNDATION MODELS",
     sublabel: "The AI brains — mostly private, a few public proxies",
+    etf: "MAGS",
     companies: [
       { ticker: "META", name: "Meta Platforms", role: "Llama open-source models — largest open foundation model ecosystem" },
       { ticker: "GOOGL", name: "Alphabet / Google", role: "Gemini models — powers Search, YouTube, Cloud, Workspace (also L11)" },
@@ -195,6 +209,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L13",
     label: "ENTERPRISE AI SOFTWARE & APPLICATIONS",
     sublabel: "Where AI becomes a product companies pay recurring revenue for",
+    etf: "XSW",
     companies: [
       { ticker: "PLTR", name: "Palantir", role: "AIP platform — AI for enterprise & govt; 61% 2026 revenue growth" },
       { ticker: "NOW", name: "ServiceNow", role: "AI workflow automation — $11.25B 2026 revenue; 46% operating margin" },

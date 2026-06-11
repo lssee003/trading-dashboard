@@ -9,7 +9,7 @@ export const RS_SYMBOLS = [
   "IWC","IJH",
   "QTUM","REMX","URA","URNM","LIT","GDX","SIL","UFO","WGMI","ARKG","INDA","EEM","IDGT","MSOS",
   "GLD","SLV","TAN","PSIL",
-  "NLR","DRAM","AIQ","MAGS","SPMO","HYDR","MEME","ARGT",
+  "NLR","DRAM","AIQ","MAGS","SPMO","HYDR","MEME","ARGT","FOTO","PAVE",
 ] as const;
 
 export type RSSymbol = typeof RS_SYMBOLS[number];
