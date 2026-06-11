@@ -10,7 +10,7 @@ import { useTheme } from "@/hooks/useTheme";
 import {
   RefreshCw, Search, Sun, Moon, X, Plus, Download,
   ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity, Table, Orbit,
-  ArrowUpRight,
+  ArrowUpRight, ChevronDown,
 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
 import {
@@ -64,6 +64,7 @@ export default function RelativeStrength() {
   const [sortKey, setSortKey] = useState<SortKey>("rsVsBenchmark");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [viewMode, setViewMode] = useState<"table" | "rrg">("table");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // ─── Magnetic RRG button ───
   const rrgBtnRef = useRef<HTMLButtonElement>(null);
@@ -371,8 +372,39 @@ export default function RelativeStrength() {
                 </div>
               </div>
 
+              {/* Mobile: collapsed Bench/Window/Filter trigger */}
+              <button
+                onClick={() => setMobileFiltersOpen((v) => !v)}
+                className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                style={{
+                  background: mobileFiltersOpen ? "var(--terminal-blue)" : "transparent",
+                  color: mobileFiltersOpen ? "#fff" : "var(--text-primary)",
+                  border: "1px solid var(--terminal-border)",
+                }}
+                aria-expanded={mobileFiltersOpen}
+                aria-controls="rs-mobile-filters"
+                data-testid="button-mobile-filters"
+              >
+                <span
+                  className="text-[10px] uppercase tracking-wider"
+                  style={{ color: mobileFiltersOpen ? "rgba(255,255,255,0.7)" : "var(--text-muted)" }}
+                >
+                  Filters
+                </span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {benchmark} · {lookback}D · {categoryFilter === "Industry Group" ? "Industry" : categoryFilter}
+                </span>
+                <ChevronDown
+                  className="w-3 h-3"
+                  style={{
+                    transition: "transform 0.2s ease",
+                    transform: mobileFiltersOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
+              </button>
+
               {/* Benchmark selector */}
-              <div className="flex items-center gap-1.5">
+              <div className="hidden md:flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Bench</span>
                 <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
                   {BENCHMARK_OPTIONS.map((opt) => (
@@ -393,7 +425,7 @@ export default function RelativeStrength() {
               </div>
 
               {/* Lookback selector */}
-              <div className="flex items-center gap-1.5">
+              <div className="hidden md:flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Window</span>
                 <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
                   {LOOKBACK_OPTIONS.map((opt) => (
@@ -414,7 +446,7 @@ export default function RelativeStrength() {
               </div>
 
               {/* Category filter */}
-              <div className="flex items-center gap-1.5">
+              <div className="hidden md:flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Filter</span>
                 <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
                   {CATEGORY_FILTERS.map((cat) => (
@@ -434,8 +466,9 @@ export default function RelativeStrength() {
                 </div>
               </div>
 
+
               {/* Search */}
-              <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
+              <div className="flex items-center gap-1.5 basis-full md:basis-auto md:flex-1 md:min-w-[140px]">
                 <div
                   className="flex items-center gap-1.5 px-2 py-1 rounded flex-1"
                   style={{ background: "var(--overlay-subtle)", border: "1px solid var(--terminal-border)" }}
@@ -459,10 +492,18 @@ export default function RelativeStrength() {
               </div>
 
               {/* Add ticker */}
-              <div className="flex items-center gap-1">
+              <div
+                className="flex items-center gap-1"
+                title={IS_STATIC ? "Ad-hoc tickers need the live backend. The public demo (GitHub Pages) is a static snapshot — run the app locally to add tickers." : undefined}
+                style={{ cursor: IS_STATIC ? "not-allowed" : undefined }}
+              >
                 <div
                   className="flex items-center gap-1 px-2 py-1 rounded"
-                  style={{ background: "var(--overlay-subtle)", border: "1px solid var(--terminal-border)" }}
+                  style={{
+                    background: "var(--overlay-subtle)",
+                    border: "1px solid var(--terminal-border)",
+                    opacity: IS_STATIC ? 0.4 : 1,
+                  }}
                 >
                   <Plus className="w-3 h-3 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
                   <input
@@ -474,12 +515,19 @@ export default function RelativeStrength() {
                     className="bg-transparent text-[11px] outline-none w-[70px]"
                     style={{ color: "var(--text-primary)" }}
                     data-testid="input-add-ticker"
+                    disabled={IS_STATIC}
                   />
                 </div>
                 <button
                   onClick={handleAddTicker}
+                  disabled={IS_STATIC}
                   className="px-2 py-1 rounded text-[11px] font-medium transition-colors"
-                  style={{ background: "var(--terminal-blue)", color: "#fff" }}
+                  style={{
+                    background: "var(--terminal-blue)",
+                    color: "#fff",
+                    opacity: IS_STATIC ? 0.4 : 1,
+                    cursor: IS_STATIC ? "not-allowed" : undefined,
+                  }}
                   data-testid="button-add-ticker"
                 >
                   Add
@@ -519,6 +567,80 @@ export default function RelativeStrength() {
                 <span>AI Stack</span>
                 <ArrowUpRight className="ai-stack-arrow" width={12} height={12} />
               </a>
+            </div>
+
+            {/* Mobile: expandable filter panel — Bench / Window / Filter stacked */}
+            <div
+              id="rs-mobile-filters"
+              className="md:hidden overflow-hidden"
+              style={{
+                maxHeight: mobileFiltersOpen ? "280px" : "0px",
+                opacity: mobileFiltersOpen ? 1 : 0,
+                transition: "max-height 0.25s ease, opacity 0.2s ease",
+              }}
+            >
+              <div
+                className="flex flex-col gap-2 pt-3 mt-3 border-t"
+                style={{ borderColor: "var(--terminal-border)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-wider w-14 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Bench</span>
+                  <div className="flex rounded overflow-hidden flex-1" style={{ border: "1px solid var(--terminal-border)" }}>
+                    {BENCHMARK_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setBenchmark(opt.value)}
+                        className="flex-1 px-2 py-2 text-[11px] font-medium transition-all"
+                        style={{
+                          background: benchmark === opt.value ? "var(--terminal-blue)" : "transparent",
+                          color: benchmark === opt.value ? "#fff" : "var(--terminal-dim)",
+                        }}
+                        data-testid={`bench-mobile-${opt.value}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-wider w-14 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Window</span>
+                  <div className="flex rounded overflow-hidden flex-1" style={{ border: "1px solid var(--terminal-border)" }}>
+                    {LOOKBACK_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setLookback(opt.value)}
+                        className="flex-1 px-2 py-2 text-[11px] font-medium transition-all"
+                        style={{
+                          background: lookback === opt.value ? "var(--terminal-blue)" : "transparent",
+                          color: lookback === opt.value ? "#fff" : "var(--terminal-dim)",
+                        }}
+                        data-testid={`lookback-mobile-${opt.value}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-wider w-14 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Filter</span>
+                  <div className="flex rounded overflow-hidden flex-1" style={{ border: "1px solid var(--terminal-border)" }}>
+                    {CATEGORY_FILTERS.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setCategoryFilter(cat)}
+                        className="flex-1 px-1.5 py-2 text-[11px] font-medium transition-all"
+                        style={{
+                          background: categoryFilter === cat ? "var(--terminal-blue)" : "transparent",
+                          color: categoryFilter === cat ? "#fff" : "var(--terminal-dim)",
+                        }}
+                        data-testid={`filter-mobile-${cat}`}
+                      >
+                        {cat === "Industry Group" ? "Industry" : cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Extra tickers chips */}
