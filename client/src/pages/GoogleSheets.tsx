@@ -221,23 +221,10 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   const mthBullish = up25m > down25m;
   const intBullish = up13 > down13;
 
-  // ── T2108 analytics ──────────────────────────────
-  // Use up to 40 rows for the 40MA (user specified); keep other signals within 20-day recent window
-  const t2108Rows40 = validRows.slice(0, 40).map(r => getNumVal(r, COL.T2108) ?? 50);
-  const t2108Values = t2108Rows40.slice(0, 20); // first 20 = same as recent window
-  const t2108_3dAgo = t2108Values[3] ?? t2108;
-  const t2108Peak5d = Math.max(...t2108Values.slice(1, 6));   // peak over last 5 days (excl. today)
-  const t2108Trough5d = Math.min(...t2108Values.slice(1, 6)); // trough over last 5 days
-  // 40MA of T2108 — use however many rows are available up to 40
-  const t2108MA40 = t2108Rows40.reduce((a, b) => a + b, 0) / t2108Rows40.length;
-  const t2108AboveMA40 = t2108 > t2108MA40;
-  // Yesterday's T2108 vs 40MA (for breach detection — was below, now above, or vice versa)
-  const t2108YesterdayAboveMA40 = t2108Values[1] !== undefined ? t2108Values[1] > t2108MA40 : t2108AboveMA40;
-  const t2108CrossedAboveMA40 = t2108AboveMA40 && !t2108YesterdayAboveMA40;
-  const t2108CrossedBelowMA40 = !t2108AboveMA40 && t2108YesterdayAboveMA40;
-  // "Peeling" = T2108 was at an extreme recently and is now reversing away from it
-  const t2108PeelingDown = t2108Peak5d > 60 && t2108 < t2108Peak5d - 3 && t2108 < t2108_3dAgo;
-  const t2108PeelingUp   = t2108Trough5d < 20 && t2108 > t2108Trough5d + 3 && t2108 > t2108_3dAgo;
+  // ── T2108 ──────────────────────────────
+  // Stockbee reads T2108 off its absolute extreme zones only (<20 oversold, >70 overbought).
+  // He does NOT use a moving average of the T2108 value, nor treat the "turn" as a separate
+  // signal — he acts AT the extreme, anticipatorily. (Confirmed against source methodology.)
 
   // ── Days since Primary Indicator last flipped bullish ──
   // recent[i] = i days ago; if today (i=0) is first day up25q > down25q → daysSinceFlip = 0 (Day 1)
@@ -249,16 +236,24 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   }
 
   // ── Burst run detection ──
-  // Count thrust days in the last 7 sessions (non-consecutive — rallies have mixed days)
-  const last7 = recent.slice(0, 7);
-  const thrustDaysInLast7 = last7.filter(r => r.up4 >= 300).length;
-  // Find the peak thrust day (highest up4) in last 7 and how many days ago it was
-  const peakThrustEntry = last7
-    .map((r, i) => ({ up4: r.up4, idx: i }))
-    .reduce((a, b) => a.up4 > b.up4 ? a : b, { up4: 0, idx: -1 });
-  const daysSincePeakThrust = peakThrustEntry.up4 >= 300 ? peakThrustEntry.idx : -1;
-  // "In late burst window": 2+ thrust days in last 7 sessions, peak thrust was 3+ days ago
-  const inLateBurstWindow = thrustDaysInLast7 >= 2 && daysSincePeakThrust >= 3 && ratio5d > 1.5;
+  // A burst is a discrete 3-5 day impulse, NOT a standing uptrend. Anchor on the most recent
+  // thrust cluster (up4 >= 300 days) and count from its FIRST breakout day (Stockbee's rule),
+  // not the peak. The peel signal only fires once momentum is cooling (today is no longer a
+  // fresh thrust) — during continuous thrusting Stockbee presses, he doesn't peel.
+  let lastThrustIdx = -1;
+  for (let i = 0; i < recent.length; i++) { if (recent[i].up4 >= 300) { lastThrustIdx = i; break; } }
+  let burstStartIdx = -1;
+  if (lastThrustIdx >= 0 && lastThrustIdx <= 5) {
+    burstStartIdx = lastThrustIdx; // walk back through the contiguous breakout cluster
+    for (let i = lastThrustIdx + 1; i < Math.min(lastThrustIdx + 5, recent.length); i++) {
+      if (recent[i].up4 >= 300) burstStartIdx = i; else break;
+    }
+  }
+  // Which day of the burst is today (first breakout day = Day 1). 0 = no active burst.
+  const burstDay = burstStartIdx >= 0 ? burstStartIdx + 1 : 0;
+  // Late/exhausting: burst began 3+ sessions ago, breadth still positive, but today is no longer
+  // a fresh thrust (momentum cooling) — the "peel into strength" window.
+  const inLateBurstWindow = burstStartIdx >= 2 && ratio5d > 1 && up4 < 300;
 
   // ══════════════════════════════════════════════════
   // 1. REGIME
@@ -281,13 +276,47 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   // ══════════════════════════════════════════════════
   // 2. PRIMARY TREND DESCRIPTION
   // ══════════════════════════════════════════════════
+  // Report not just the sign but the TRAJECTORY of the primary indicator — a positive reading
+  // that is quietly deteriorating is the early warning the indicator exists for.
   let primaryTrend: string;
+  // Stockbee reads trajectory as the roll-off from the current leg's participation PEAK
+  // (high-water mark) — not a fixed-window % change. Meaningful deterioration = the count rolling
+  // several hundred stocks (~15%+) off that peak; strength = sitting at/near a fresh high. Raw
+  // counts, no smoothing. The down-count is read symmetrically (rolling off its high = selling
+  // exhausting). Window ≈ current leg (his "few days to a couple of weeks").
+  const legWindow = recent.slice(0, Math.min(15, recent.length));
+  const peakUp = Math.max(...legWindow.map(r => r.up25q));
+  const rollOffUp = peakUp - up25q;
+  const rollPctUp = peakUp ? rollOffUp / peakUp : 0;
+  const peakDown = Math.max(...legWindow.map(r => r.down25q));
+  const rollOffDown = peakDown - down25q;
+  const rollPctDown = peakDown ? rollOffDown / peakDown : 0;
   if (qtrBullish) {
     const margin = up25q - down25q;
-    primaryTrend = `Bullish — quarterly breadth positive (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net +${margin.toLocaleString()}). Long swing trades and breakouts are more likely to have follow-through.`;
+    let trajectory: string;
+    if (up25q <= 200) {
+      trajectory = `Up-participation has collapsed to ${up25q.toLocaleString()} — the rally is out of gas. Be defensive; long breakouts are unlikely to work.`;
+    } else if (rollPctUp >= 0.15) {
+      trajectory = `The up-count is rolling off its recent high of ${peakUp.toLocaleString()} (down ${rollOffUp.toLocaleString()} stocks, ~${Math.round(rollPctUp * 100)}%). Participation is leaving the market — stop adding, tighten stops, and watch for a flip to bearish.`;
+    } else if (rollPctUp <= 0.02) {
+      trajectory = `The up-count is at a participation high (~${up25q.toLocaleString()}) — participation is broad and breakouts have follow-through.`;
+    } else {
+      trajectory = `The up-count is holding — ${rollOffUp.toLocaleString()} stocks off its recent high of ${peakUp.toLocaleString()}, not deteriorating. Long swing trades and breakouts have follow-through.`;
+    }
+    primaryTrend = `Bullish — quarterly breadth positive (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net +${margin.toLocaleString()}). ${trajectory}`;
   } else {
     const margin = down25q - up25q;
-    primaryTrend = `Bearish — quarterly breadth negative (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net −${margin.toLocaleString()}). Trading long is riskier; breakouts are more likely to fail.`;
+    let trajectory: string;
+    if (down25q <= 200) {
+      trajectory = `Down-participation has dried up to ${down25q.toLocaleString()} — downside pressure is exhausting. Watch for a breadth thrust to confirm a trend change before going long.`;
+    } else if (rollPctDown >= 0.15) {
+      trajectory = `The down-count is rolling off its recent high of ${peakDown.toLocaleString()} (down ${rollOffDown.toLocaleString()} stocks, ~${Math.round(rollPctDown * 100)}%) — selling is exhausting. Watch for the up-count to overtake (a primary flip), or a breadth thrust, before adding long exposure.`;
+    } else if (rollPctDown <= 0.02) {
+      trajectory = `The down-count is at a participation high (~${down25q.toLocaleString()}) — selling is intensifying. Stay defensive; breakouts are likely to fail.`;
+    } else {
+      trajectory = `The down-count is holding — ${rollOffDown.toLocaleString()} stocks off its recent high of ${peakDown.toLocaleString()}. Trading long is riskier, and breakouts are more likely to fail.`;
+    }
+    primaryTrend = `Bearish — quarterly breadth negative (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net −${margin.toLocaleString()}). ${trajectory}`;
   }
 
   // ══════════════════════════════════════════════════
@@ -300,15 +329,21 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     keySignals.push({
       type: "bullish",
       label: `${up4.toLocaleString()} stocks up 4%+ today`,
-      detail: "Above-average buying pressure — institutional accumulation day.",
+      detail: up4 >= 1000
+        ? "Breadth thrust — 1,000+ up 4% signals a major change in character. Back-to-back 1,000+ days are a definitive market-bottom signal (2009 precedent)."
+        : up4 >= 600
+        ? "Strong money flow — buyers coming in droves. Breakouts work consistently when days like this cluster."
+        : "Above-average buying pressure — institutional accumulation day.",
     });
   }
   if (down4 > 299) {
     keySignals.push({
       type: "bearish",
       label: `${down4.toLocaleString()} stocks down 4%+ today`,
-      detail: down4 >= 600
-        ? "Extreme selling / \"knockout punch\" — capitulation day, paradoxically often precedes a turn."
+      detail: down4 >= 1000
+        ? "Knockout punch — 1,000+ down 4% indicates overwhelming liquidation and institutional panic. Go defensive or short; expect bounces to fail until the primary indicator turns positive."
+        : down4 >= 600
+        ? "Heavy selling — a sustained stretch of distribution. Money is flowing out; long setups are unlikely to work here."
         : "Above-average selling pressure — institutional distribution day.",
     });
   }
@@ -375,14 +410,30 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   if (up50m >= 20) {
     keySignals.push({
       type: "caution",
-      label: `Red Hot indicator at ${up50m} (≥20 threshold)`,
-      detail: "Market is overextended — a short-term correction or pullback is likely within 2-5 days. Do not chase extended moves.",
+      label: `Red Hot indicator at ${up50m} (≥20)`,
+      detail: "Red-hot momentum extreme — buying is exhausting. The correction comes within a couple of days to ~2 weeks (not necessarily the next day). Be proactively defensive: tighten stops, sell into strength, don't chase extended names.",
     });
   } else if (up50m < 2) {
     keySignals.push({
-      type: "bullish",
+      type: "caution",
       label: `Red Hot indicator at ${up50m} (<2)`,
-      detail: "Extreme low reading — froth has been washed out, fresh setups are safer.",
+      detail: "Subdued market — almost no stocks are making explosive moves. Participation has dried up; momentum longs are unlikely to work until buying returns.",
+    });
+  }
+
+  // Quarterly participation extremes (Primary Indicator collapse / exhaustion)
+  if (up25q <= 200) {
+    keySignals.push({
+      type: "caution",
+      label: `Quarterly up-participation collapsed to ${up25q.toLocaleString()} (≤200)`,
+      detail: "Sustained bullish participation has collapsed — the rally is out of gas. Be proactively defensive; long breakouts are unlikely to work.",
+    });
+  }
+  if (down25q <= 200) {
+    keySignals.push({
+      type: "bullish",
+      label: `Quarterly down-participation dried up to ${down25q.toLocaleString()} (≤200)`,
+      detail: "Selling pressure has exhausted on a durable basis — prepare for a trend change. Watch for a breadth thrust (back-to-back 1,000+ up 4%) to confirm before going aggressively long.",
     });
   }
 
@@ -409,46 +460,20 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   } else if (t2108 > 70) {
     keySignals.push({
       type: "caution",
-      label: `T2108 at ${t2108.toFixed(1)}% (overbought >70)`,
-      detail: t2108 > 80
-        ? "Extremely overbought — pullback is likely, scale back long positions and tighten stops."
-        : "Reaching overbought zone — become cautious, a pullback is approaching.",
-    });
-  }
-
-  // T2108 peeling signals
-  if (t2108PeelingDown) {
-    keySignals.push({
-      type: "caution",
-      label: `T2108 peeling down — was ${t2108Peak5d.toFixed(1)}%, now ${t2108.toFixed(1)}%`,
-      detail: `T2108 peaked at ${t2108Peak5d.toFixed(1)}% in the last 5 days and is now rolling over. This is a "peel longs" signal — sell into strength, tighten stops, and avoid chasing extended names. Momentum bursts typically reverse within 3-5 days of peaking.`,
-    });
-  } else if (t2108PeelingUp) {
-    keySignals.push({
-      type: "bullish",
-      label: `T2108 peeling up — was ${t2108Trough5d.toFixed(1)}%, now ${t2108.toFixed(1)}%`,
-      detail: `T2108 troughed at ${t2108Trough5d.toFixed(1)}% in the last 5 days and is now turning up from oversold. This confirms the bounce is underway — initiate positions with confirmation, tight stops below the recent low.`,
-    });
-  }
-
-  // T2108 vs its 40-day MA (structural breadth context)
-  if (!t2108PeelingDown && !t2108PeelingUp && t2108 > 20 && t2108 < 70) {
-    keySignals.push({
-      type: t2108AboveMA40 ? "bullish" : "caution",
-      label: `T2108 at ${t2108.toFixed(1)}% — ${t2108AboveMA40 ? "above" : "below"} its 40MA (${t2108MA40.toFixed(1)}%)`,
-      detail: t2108AboveMA40
-        ? "T2108 is above its 40-day MA — structural breadth is healthy, the majority of stocks are in uptrends. Breakouts have follow-through."
-        : "T2108 is below its 40-day MA — structural breadth is impaired, most stocks are in downtrends. Treat rallies as opportunities to reduce exposure.",
+      label: `T2108 at ${t2108.toFixed(1)}% — overbought (>70)`,
+      detail: "T2108 above 70 is the overbought zone — buying has likely exhausted and a pullback is probable within days. Reduce exposure proactively: tighten stops, sell into strength, avoid new positions.",
     });
   }
 
   // Day N of recovery / burst — peel signal
   if (inLateBurstWindow) {
-    const dayLabel = daysSincePeakThrust >= 5 ? `Day ${daysSincePeakThrust + 1}+` : `Day ${daysSincePeakThrust + 1}`;
+    const dayLabel = burstDay >= 5 ? `Day ${burstDay}+` : `Day ${burstDay}`;
+    // up-4% counts across the burst, oldest → newest (first breakout day to today)
+    const burstSeq = recent.slice(0, burstStartIdx + 1).map(r => r.up4).reverse();
     keySignals.push({
       type: "caution",
       label: `${dayLabel} of momentum burst — PEEL longs into strength`,
-      detail: `The peak thrust day was ${daysSincePeakThrust} sessions ago. Momentum bursts typically last 3-5 days; many stocks have likely reached the 8-20% profit target. Take the bulk of profits now, move stops aggressively to breakeven, and avoid adding new exposure at these levels.`,
+      detail: `Breakout days (stocks up 4%): ${burstSeq.map(v => v.toLocaleString()).join(" → ")}. The burst began ${burstStartIdx} session${burstStartIdx === 1 ? "" : "s"} ago, counted from the first 4% breakout day. Momentum typically runs 3-5 days, by which point many stocks have reached the 8-20% target. Take the bulk of profits, move stops to breakeven, and avoid new exposure here.`,
     });
   } else if (daysSinceBullishFlip >= 3 && daysSinceBullishFlip <= 7) {
     const sessionLabel = `Session ${daysSinceBullishFlip + 1}`;
@@ -501,11 +526,17 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     .filter((r) => r.up4 >= 300);
   if (thrustDays.length > 0) {
     const biggest = thrustDays.reduce((a, b) => (a.up4 > b.up4 ? a : b));
-    if (biggest.up4 >= 800) {
+    if (biggest.up4 >= 1000) {
       significantEvents.push({
         rowIndex: biggest.idx,
         date: getRowDate(validRows[biggest.idx]),
-        description: `Massive breadth thrust — ${biggest.up4.toLocaleString()} stocks up 4%+ in a single day. This is a major "market break thrust" signaling institutional buying. Market likely continues higher for 2-5 days.`,
+        description: `Breadth thrust — ${biggest.up4.toLocaleString()} stocks up 4%+ in a single day. A 1,000+ day signals a major change in character; back-to-back 1,000+ days are a definitive market-bottom signal (the 2009 precedent: 1,700 followed by 1,300-1,500).`,
+      });
+    } else if (biggest.up4 >= 600) {
+      significantEvents.push({
+        rowIndex: biggest.idx,
+        date: getRowDate(validRows[biggest.idx]),
+        description: `Strong buying thrust — ${biggest.up4.toLocaleString()} stocks up 4%+. Money is flowing in; breakouts work consistently when days like this cluster.`,
       });
     } else if (biggest.up4 >= 300) {
       significantEvents.push({
@@ -520,40 +551,39 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     ).length;
     if (consecutiveThrusts >= 2) {
       const peelNote = inLateBurstWindow
-        ? ` Day ${daysSincePeakThrust + 1} of momentum burst — consider peeling 70-80% of longs. Momentum bursts typically exhaust by Day 3-5; lock in profits and move stops to breakeven.`
+        ? ` Day ${burstDay} of momentum burst — consider peeling 70-80% of longs. Bursts typically exhaust by Day 3-5; lock in profits and move stops to breakeven.`
         : "";
       significantEvents.push({
         rowIndex: 0,
         date: getRowDate(validRows[0]),
-        description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — sustained breadth thrust confirms a sustainable rally, not just a dead-cat bounce.${peelNote}`,
+        description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — a sustained breadth thrust confirms a durable rally rather than a temporary bounce.${peelNote}`,
       });
     }
   }
 
-  // Detect capitulation days (600+ down 4%)
-  // Capitulation days (600+ down 4%) — "knockout punch"
-  const capitulationDays = recent
+  // "Knockout punch" — 1,000+ down 4% (Stockbee's threshold for overwhelming liquidation)
+  const knockoutDays = recent
     .map((r, i) => ({ ...r, idx: i }))
-    .filter((r) => r.down4 >= 600);
-  if (capitulationDays.length > 0) {
-    const worst = capitulationDays.reduce((a, b) => (a.down4 > b.down4 ? a : b));
+    .filter((r) => r.down4 >= 1000);
+  if (knockoutDays.length > 0) {
+    const worst = knockoutDays.reduce((a, b) => (a.down4 > b.down4 ? a : b));
     significantEvents.push({
       rowIndex: worst.idx,
       date: getRowDate(validRows[worst.idx]),
-      description: `Capitulation day — ${worst.down4.toLocaleString()} stocks down 4%+ ("knockout punch"). Extreme selling like this paradoxically often precedes a market turn. Watch for breadth thrust to confirm a bottom.`,
+      description: `Knockout punch — ${worst.down4.toLocaleString()} stocks down 4%+. Overwhelming liquidation and institutional panic. Go defensive or short; expect bounces to fail until the primary indicator turns positive.`,
     });
   }
 
-  // Distribution days (500–599 down 4% + ratio deteriorating) — below "knockout" but still significant
-  const distributionDays = recent
+  // Big selling — 600–999 down 4% (a continuous stretch of distribution, below the knockout level)
+  const bigSellingDays = recent
     .map((r, i) => ({ ...r, idx: i }))
-    .filter((r) => r.down4 >= 500 && r.down4 < 600 && r.ratio10d < 1);
-  if (distributionDays.length > 0) {
-    const worst = distributionDays.reduce((a, b) => (a.down4 > b.down4 ? a : b));
+    .filter((r) => r.down4 >= 600 && r.down4 < 1000);
+  if (bigSellingDays.length > 0) {
+    const worst = bigSellingDays.reduce((a, b) => (a.down4 > b.down4 ? a : b));
     significantEvents.push({
       rowIndex: worst.idx,
       date: getRowDate(validRows[worst.idx]),
-      description: `Distribution day — ${worst.down4.toLocaleString()} stocks down 4%+ with the 10-day ratio at ${worst.ratio10d.toFixed(2)}x (sellers dominating). Institutional supply is overwhelming demand. Avoid new long entries; tighten stops on existing positions.`,
+      description: `Heavy selling — ${worst.down4.toLocaleString()} stocks down 4%+, a sustained stretch of distribution. Money is flowing out; long setups are unlikely to work. Avoid new entries and tighten stops.`,
     });
   }
 
@@ -561,13 +591,13 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   // This is the "peel longs" signal from January 15-type scenarios
   const exuberanceDays = recent
     .map((r, i) => ({ ...r, idx: i }))
-    .filter((r) => r.up50m >= 20 && r.t2108 >= 60);
+    .filter((r) => r.up50m >= 20 && r.t2108 > 70);
   if (exuberanceDays.length > 0) {
     const peak = exuberanceDays.reduce((a, b) => (a.up50m > b.up50m ? a : b));
     significantEvents.push({
       rowIndex: peak.idx,
       date: getRowDate(validRows[peak.idx]),
-      description: `Peak exuberance — ${peak.up50m} stocks up 50%+ in a month (Red Hot ≥20) while T2108 reached ${peak.t2108.toFixed(1)}%. This "blowout" condition signals the market is severely overextended. Sell into strength (peel 70-80% of longs), as a sharp correction typically follows within 3-5 sessions.`,
+      description: `Peak exuberance — ${peak.up50m} stocks up 50%+ in a month (Red Hot ≥20) while T2108 reached ${peak.t2108.toFixed(1)}%. This condition signals the market is severely overextended. Sell into strength (peel 70-80% of longs), as a sharp correction typically follows within 3-5 sessions.`,
     });
   }
 
@@ -578,7 +608,7 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     const deepest = oversoldDays.reduce((a, b) => (a.t2108 < b.t2108 ? a : b));
     const deepestIdx = recent.indexOf(deepest);
     const intensity = deepest.t2108 < 10
-      ? `Extreme oversold — T2108 at ${deepest.t2108.toFixed(1)}% is in rare territory seen only at major market bottoms (e.g. COVID crash, 2022 bear). Historically a high-confidence long-term buy signal when confirmed by a breadth thrust. This is the "back up the truck" zone.`
+      ? `Extreme oversold — T2108 at ${deepest.t2108.toFixed(1)}% is in rare territory seen only at major market bottoms (e.g. COVID crash, 2022 bear). Historically a high-confidence long-term buy signal when confirmed by a breadth thrust — the highest-conviction long-term entry zone.`
       : deepest.t2108 < 15
       ? `T2108 hit ${deepest.t2108.toFixed(1)}% — deep oversold zone that has historically marked or closely preceded significant market lows. Watch for a breadth thrust (300+ up 4%) to confirm the turn; when it comes, it is one of the most reliable entry signals in the market.`
       : `T2108 entered oversold territory at ${deepest.t2108.toFixed(1)}% — a rare reading that has frequently coincided with short to intermediate-term market bottoms. Combined with a breadth thrust, this sets up a high-probability bounce.`;
@@ -586,21 +616,6 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
       rowIndex: deepestIdx,
       date: getRowDate(validRows[deepestIdx]),
       description: intensity,
-    });
-  }
-
-  // T2108 breach of its 40MA — a structural regime change signal
-  if (t2108CrossedAboveMA40) {
-    significantEvents.push({
-      rowIndex: 0,
-      date: getRowDate(validRows[0]),
-      description: `T2108 crossed above its 40-day MA (now ${t2108.toFixed(1)}% vs 40MA at ${t2108MA40.toFixed(1)}%) — a structural breadth regime change to bullish. The majority of stocks are reclaiming their 40-day MAs. This is a reliable medium-term buy signal; initiate or add to long positions on breakouts.`,
-    });
-  } else if (t2108CrossedBelowMA40) {
-    significantEvents.push({
-      rowIndex: 0,
-      date: getRowDate(validRows[0]),
-      description: `T2108 crossed below its 40-day MA (now ${t2108.toFixed(1)}% vs 40MA at ${t2108MA40.toFixed(1)}%) — a structural breadth regime change to bearish. Most stocks are losing their 40-day MAs. Reduce long exposure, avoid new breakout entries, and consider raising cash.`,
     });
   }
 
@@ -616,25 +631,55 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   const hasOversold = t2108 < 20;
   const hasCapitulation = down50m > 19;
   const hasBearishPrimary = !qtrBullish;
-  const hasBuyingThrust = up4 >= 300 || ratio5d > 2;
+  const hasBuyingThrust = up4 >= 600 || ratio5d > 2;
+  const qtrDeteriorating = qtrBullish && rollPctUp >= 0.15 && up25q > 200;
+  const qtrExpanding = qtrBullish && rollPctUp <= 0.02;
 
-  // Green Light / Yellow Light scenario (bullish primary + short-term exhaustion)
-  if (hasBullishPrimary && hasRedHot) {
-    assessParts.push(
-      `Green Light / Yellow Light — The Primary Indicator is bullish (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}), confirming a regime where breakouts work. However, the Red Hot indicator at ${up50m} (≥20) warns the market is short-term overextended.`,
-    );
-    assessParts.push(
-      "Do not chase stocks already up 3-4 days in a row. The safest approach is to wait for a 2-3 day pullback to clear the froth, then enter fresh breakouts from tight consolidations with closer stops.",
-    );
-  }
-  // Green Light / Yellow Light (bullish primary + overbought)
-  else if (hasBullishPrimary && hasOverbought && !hasRedHot) {
-    assessParts.push(
-      `Green Light / Yellow Light — Primary trend is bullish but T2108 at ${t2108.toFixed(1)}% signals an overbought market. A pullback is likely before the next leg higher.`,
-    );
-    assessParts.push(
-      "Tighten stops on existing positions. Wait for a 2-3 day pullback before adding new exposure. Buy fresh setups only — avoid extended names.",
-    );
+  // ── Bullish primary: decide from sign + trajectory first; Red Hot / overbought is an
+  //    overlay caution, NOT a regime downgrade. ──
+  if (hasBullishPrimary) {
+    if (qtrDeteriorating) {
+      // Topping risk wins even when Red Hot — narrowing participation under a holding index.
+      assessParts.push(
+        `Topping Risk — the Primary Indicator is still positive (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}), but the up-count has rolled ${rollOffUp.toLocaleString()} stocks (~${Math.round(rollPctUp * 100)}%) off its recent high of ${peakUp.toLocaleString()}. Participation is narrowing while the index holds up — the classic late-stage divergence.`,
+      );
+      assessParts.push(
+        `Stop adding new long exposure, tighten stops, and take profits into strength. Watch for the quarterly up-count to drop below down (a flip to bearish)${hasRedHot ? `; with ${up50m} stocks up 50%+ in a month, froth is already extreme` : ""}.`,
+      );
+    } else if (ratio10d < 1) {
+      // Bullish primary but short-term momentum has faded — pullback within an uptrend.
+      assessParts.push(
+        `Pullback Within an Uptrend — the Primary Indicator is bullish (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}) but the 10-day ratio at ${ratio10d.toFixed(2)}x shows short-term momentum has faded. This is more likely a pullback than a trend change.`,
+      );
+      assessParts.push(
+        "Wait for the 5/10-day ratios to turn back above 1.0 before adding. Hold existing positions with trailing stops.",
+      );
+    } else {
+      // Expanding / steady uptrend — be long.
+      if (ratio10d >= 2 && (mthBullish || qtrExpanding)) {
+        assessParts.push(
+          `Strong Uptrend — the Primary Indicator is bullish${qtrExpanding ? " and expanding" : ""} (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}) with the 10-day ratio at ${ratio10d.toFixed(2)}x. Buyers have clearly seized control — be aggressively long: press breakouts near highs and add to winners.`,
+        );
+      } else if (intBullish && mthBullish) {
+        assessParts.push(
+          `Bullish Regime — the Primary Indicator is positive (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}) and monthly/intermediate breadth confirm broad participation. Be long: buy pullbacks to support and fresh breakouts from tight consolidations.`,
+        );
+      } else {
+        assessParts.push(
+          `Bullish Regime — the Primary Indicator is positive (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}). Breakouts are working with follow-through — buy pullbacks on strength and fresh breakouts with disciplined risk.`,
+        );
+      }
+      // Froth overlay — caution, not a downgrade.
+      if (hasRedHot) {
+        assessParts.push(
+          `Caveat: the Red Hot indicator at ${up50m} (≥20) flags short-term froth. Don't chase names already up 3-4 days — take fresh breakouts from tight bases and keep stops close. The pullback typically arrives within days to ~2 weeks.`,
+        );
+      } else if (hasOverbought) {
+        assessParts.push(
+          `Caveat: T2108 at ${t2108.toFixed(1)}% is overbought — a pullback is likely before the next leg. Tighten stops and favor fresh setups over extended names.`,
+        );
+      }
+    }
   }
   // Bearish primary + strong buying thrust (potential bottom/reversal)
   else if (hasBearishPrimary && hasBuyingThrust) {
@@ -675,35 +720,12 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
       );
     }
   }
-  // Pure bullish
-  else if (regimeSignal === "GREEN" && !hasRedHot && !hasOverbought) {
-    assessParts.push(
-      `Bullish Regime — The Primary Indicator is positive (quarterly up ${up25q.toLocaleString()} > down ${down25q.toLocaleString()}) and the market is not overextended. This is the environment to be aggressively long.`,
-    );
-    if (ratio10d >= 2) {
-      assessParts.push(
-        `The 10-day ratio at ${ratio10d.toFixed(2)}x shows buyers have clearly seized control. Press breakouts near highs and add to winning positions.`,
-      );
-    } else if (intBullish && mthBullish) {
-      assessParts.push(
-        "Both monthly and intermediate breadth confirm broad participation. Buy pullbacks to support and fresh breakouts from tight consolidations.",
-      );
-    } else {
-      assessParts.push(
-        "Breakouts are working with follow-through. Buy pullbacks on strength and fresh breakouts with disciplined risk management.",
-      );
-    }
-  }
-  // Choppy
+  // Choppy / mixed (bearish or neutral primary that didn't match the cases above)
   else {
     assessParts.push(
       `Mixed Signal Environment — Conflicting breadth signals across timeframes. Quarterly trend is ${qtrBullish ? "positive" : "negative"}, but short-term indicators diverge.`,
     );
-    if (qtrBullish && ratio10d < 1) {
-      assessParts.push(
-        "Short-term momentum is fading despite positive quarterly breadth — this is likely a pullback within an uptrend, not a trend change. Wait for the 5/10-day ratios to turn back above 1.0 before adding new positions.",
-      );
-    } else if (!qtrBullish && mthBullish) {
+    if (!qtrBullish && mthBullish) {
       assessParts.push(
         "Monthly breadth is turning positive ahead of quarterly — a potential regime change is forming. Watch for the quarterly up to cross above down (the Primary Flip) for confirmation. Until then, trade selectively with half positions.",
       );
@@ -721,16 +743,23 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   const isOversold = t2108 < 20 || down50m > 19;
 
   if (regimeSignal === "GREEN") {
+    // Red Hot / overbought is an overlay caveat, not a gate — decide sizing from burst/trajectory
+    // first, then append the froth qualifier so the aggressive stance can still surface.
+    const frothTag = hasRedHot
+      ? " Froth high — don't chase extended names."
+      : hasOverbought
+      ? " Overbought — tighten stops, favor fresh setups."
+      : "";
     if (inLateBurstWindow) {
-      stance = `PEEL — Day ${daysSincePeakThrust + 1} of burst. Take 70-80% of profits, move stops to breakeven, no new longs until momentum exhausts.`;
-    } else if (hasRedHot) {
-      stance = "FULL SIZE — scale into pullbacks, don't chase. Wait for 2-3 day pullback for fresh entries.";
-    } else if (hasOverbought) {
-      stance = "FULL SIZE — tighten stops, wait for pullback before adding. Buy fresh setups only.";
-    } else if (ratio10d >= 2 && mthBullish) {
-      stance = "FULL SIZE — press breakouts near highs, add to winners.";
+      stance = `PEEL — Day ${burstDay} of burst. Take 70-80% of profits, move stops to breakeven, no new longs until momentum exhausts.`;
+    } else if (qtrDeteriorating) {
+      stance = "REDUCE — primary rolling off its high. Take profits into strength, tighten stops, no new longs.";
+    } else if (ratio10d < 1) {
+      stance = "HOLD — pullback within an uptrend. No new adds until the 5/10-day ratio turns back above 1.0.";
+    } else if (ratio10d >= 2 && (mthBullish || qtrExpanding)) {
+      stance = `FULL SIZE — press breakouts near highs, add to winners.${frothTag}`;
     } else {
-      stance = "FULL SIZE — buy pullbacks on strength, disciplined risk management.";
+      stance = `FULL SIZE — buy pullbacks on strength, disciplined risk.${frothTag}`;
     }
   } else if (regimeSignal === "AMBER") {
     if (isOversold) {
