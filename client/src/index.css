@@ -798,6 +798,142 @@
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
+/* ── Terminal Analysis — Instrument Panel ──────────────────────────
+   Structural readout for the breadth panel. Entrance motion re-fires
+   only on a fresh data read (the panel body is re-keyed by lastUpdated),
+   so it animates when the numbers change, not on every render. */
+
+/* Section label — consistent micro-header for the readout */
+.ta-label {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Verdict bar — slides down as the lead element */
+@keyframes ta-verdict-in {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.ta-verdict {
+  animation: ta-verdict-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Row / block reveal — short rise + fade, staggered via inline animation-delay */
+@keyframes ta-reveal {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.ta-reveal {
+  animation: ta-reveal 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Signal dot — phosphor ignite keyed to the signal color via --ta-glow */
+@keyframes ta-dot-ignite {
+  0%   { opacity: 0; transform: scale(0.4); box-shadow: 0 0 0 0 transparent; }
+  50%  { opacity: 1; transform: scale(1.3); box-shadow: 0 0 8px 1px var(--ta-glow, transparent); }
+  100% { opacity: 1; transform: scale(1);   box-shadow: 0 0 2px 0 var(--ta-glow, transparent); }
+}
+.ta-dot {
+  animation: ta-dot-ignite 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Participation meter — draws in from the left */
+@keyframes ta-bar-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.ta-bar-fill {
+  transform-origin: left center;
+  animation: ta-bar-draw 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ta-verdict,
+  .ta-reveal,
+  .ta-dot,
+  .ta-bar-fill {
+    animation: none !important;
+  }
+  .ta-dot { opacity: 1 !important; transform: none !important; }
+  .ta-bar-fill { transform: none !important; }
+}
+
+/* ── Mini breadth meter — live instrument in the status strip ──────
+   The advance/decline boundary is a glowing seam: on a fresh read the
+   two halves draw OUTWARD from it, the seam blooms, then settles into a
+   slow phosphor breath. Hovering the strip passes a light across it. */
+
+/* Halves grow from the seam outward (green←seam, seam→red) */
+@keyframes ta-mini-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.ta-mini-up {
+  transform-origin: right center;
+  animation: ta-mini-draw 1400ms cubic-bezier(0.19, 1, 0.22, 1) both;
+  animation-delay: 80ms;
+}
+.ta-mini-down {
+  transform-origin: left center;
+  animation: ta-mini-draw 1400ms cubic-bezier(0.19, 1, 0.22, 1) both;
+  animation-delay: 80ms;
+}
+
+/* The contested seam — bloom on entry, then breathe forever */
+.ta-mini-seam {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 1.5px;
+  margin-left: -0.75px;
+  background: rgba(255, 255, 255, 0.92);
+  pointer-events: none;
+  will-change: opacity, box-shadow;
+  animation:
+    ta-seam-bloom 1400ms cubic-bezier(0.19, 1, 0.22, 1) both,
+    ta-seam-breathe 2.8s ease-in-out 1400ms infinite;
+}
+@keyframes ta-seam-bloom {
+  0%   { opacity: 0;   box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  45%  { opacity: 1;   box-shadow: 0 0 7px 2px rgba(255,255,255,0.95); }
+  100% { opacity: 0.9; box-shadow: 0 0 3px 1px rgba(255,255,255,0.5); }
+}
+@keyframes ta-seam-breathe {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 2px 0.5px rgba(255,255,255,0.4); }
+  50%      { opacity: 1;   box-shadow: 0 0 5px 1.5px rgba(255,255,255,0.8); }
+}
+
+/* Hover the strip → a light sweeps across the meter */
+.ta-mini-meter::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+  transform: translateX(-160%);
+  opacity: 0;
+}
+.ta-strip:hover .ta-mini-meter::after {
+  animation: ta-mini-sweep 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes ta-mini-sweep {
+  0%   { transform: translateX(-160%); opacity: 1; }
+  100% { transform: translateX(360%);  opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ta-mini-up,
+  .ta-mini-down { animation: none !important; transform: none !important; }
+  .ta-mini-seam { animation: none !important; opacity: 0.55 !important; box-shadow: none !important; }
+  .ta-mini-meter::after { animation: none !important; opacity: 0 !important; }
+}
+
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;

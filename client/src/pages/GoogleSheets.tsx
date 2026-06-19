@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useScrollHint } from "@/hooks/useScrollHint";
 import type { SheetsData, SheetsCell } from "@shared/schema";
 import { useTheme } from "@/hooks/useTheme";
-import { RefreshCw, Sun, Moon, Table, Brain } from "lucide-react";
+import { RefreshCw, Sun, Moon, Table, Brain, ChevronDown } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
 
 const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
@@ -159,6 +159,7 @@ interface SignificantEvent {
 interface BreadthAnalysis {
   regime: { signal: "GREEN" | "AMBER" | "RED"; label: string };
   primaryTrend: string;
+  primary: { up: number; down: number; bullish: boolean; label: string; trajectory: string };
   keySignals: KeySignal[];
   significantEvents: SignificantEvent[];
   assessment: string;
@@ -279,6 +280,8 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   // Report not just the sign but the TRAJECTORY of the primary indicator — a positive reading
   // that is quietly deteriorating is the early warning the indicator exists for.
   let primaryTrend: string;
+  let primaryTrajectory = "";
+  let primaryLabel = "";
   // Stockbee reads trajectory as the roll-off from the current leg's participation PEAK
   // (high-water mark) — not a fixed-window % change. Meaningful deterioration = the count rolling
   // several hundred stocks (~15%+) off that peak; strength = sitting at/near a fresh high. Raw
@@ -304,6 +307,8 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
       trajectory = `The up-count is holding — ${rollOffUp.toLocaleString()} stocks off its recent high of ${peakUp.toLocaleString()}, not deteriorating. Long swing trades and breakouts have follow-through.`;
     }
     primaryTrend = `Bullish — quarterly breadth positive (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net +${margin.toLocaleString()}). ${trajectory}`;
+    primaryTrajectory = trajectory;
+    primaryLabel = "Bullish";
   } else {
     const margin = down25q - up25q;
     let trajectory: string;
@@ -317,6 +322,8 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
       trajectory = `The down-count is holding — ${rollOffDown.toLocaleString()} stocks off its recent high of ${peakDown.toLocaleString()}. Trading long is riskier, and breakouts are more likely to fail.`;
     }
     primaryTrend = `Bearish — quarterly breadth negative (${up25q.toLocaleString()} up vs ${down25q.toLocaleString()} down, net −${margin.toLocaleString()}). ${trajectory}`;
+    primaryTrajectory = trajectory;
+    primaryLabel = "Bearish";
   }
 
   // ══════════════════════════════════════════════════
@@ -793,6 +800,7 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
   return {
     regime: { signal: regimeSignal, label: regimeLabel },
     primaryTrend,
+    primary: { up: up25q, down: down25q, bullish: qtrBullish, label: primaryLabel, trajectory: primaryTrajectory },
     keySignals,
     significantEvents: deduplicatedEvents,
     assessment: assessParts.join(" "),
@@ -812,18 +820,68 @@ const GROUP_COLORS: Record<string, Record<string, { bg: string; text: string }>>
   },
 };
 
-const REGIME_COLORS: Record<string, string> = {
-  GREEN: "var(--terminal-green)",
-  AMBER: "var(--terminal-amber)",
-  RED: "var(--terminal-red)",
+/* Regime-keyed verdict-bar tints (reuse the decision-panel token family) */
+const REGIME_TINT: Record<string, { bg: string; border: string; color: string }> = {
+  GREEN: { bg: "var(--decision-green-bg)", border: "var(--decision-green-border)", color: "var(--terminal-green)" },
+  AMBER: { bg: "var(--decision-amber-bg)", border: "var(--decision-amber-border)", color: "var(--terminal-amber)" },
+  RED:   { bg: "var(--decision-red-bg)",   border: "var(--decision-red-border)",   color: "var(--terminal-red)" },
 };
+
+const SIGNAL_COLOR: Record<SignalType, string> = {
+  bullish: "var(--terminal-green)",
+  bearish: "var(--terminal-red)",
+  caution: "var(--terminal-amber)",
+};
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+
+/** Animate an integer from 0 → target with an ease-out-quint curve (long decelerating tail).
+ *  Re-fires when `refresh` changes. Honors prefers-reduced-motion by snapping to the target. */
+function useCountUp(target: number, refresh: string, durationMs = 700): number {
+  const [val, setVal] = useState(() => (prefersReducedMotion() ? target : 0));
+  useEffect(() => {
+    if (prefersReducedMotion()) { setVal(target); return; }
+    let raf = 0;
+    let startTs = 0;
+    const tick = (now: number) => {
+      if (!startTs) startTs = now;
+      const t = Math.min(1, (now - startTs) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 5);
+      setVal(Math.round(target * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, refresh, durationMs]);
+  return val;
+}
+
+function CountUp({ value, refresh, duration }: { value: number; refresh: string; duration?: number }) {
+  const v = useCountUp(value, refresh, duration);
+  return <>{v.toLocaleString()}</>;
+}
+
+/** Zone header: label on the left, a hairline filling the row, optional trailing badge.
+ *  Delineates the readout into clear sections instead of floating labels. */
+function TaLabel({ children, trailing }: { children: React.ReactNode; trailing?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-2.5">
+      <span className="ta-label flex-shrink-0">{children}</span>
+      <div className="flex-1 h-px" style={{ background: "var(--terminal-border)" }} />
+      {trailing}
+    </div>
+  );
+}
 
 export default function GoogleSheets() {
   const breadthTableRef = useScrollHint<HTMLDivElement>();
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(() => {
-    try { return localStorage.getItem("breadth-analysis-open") !== "false"; } catch { return true; }
+    try { return localStorage.getItem("breadth-analysis-open") === "true"; } catch { return false; }
   });
   const { theme, toggleTheme } = useTheme();
 
@@ -888,6 +946,10 @@ export default function GoogleSheets() {
     const dataRows = data.rows.slice(dataStartIdx);
     return generateBreadthAnalysis(dataRows);
   }, [data?.rows, dataStartIdx]);
+
+  /** Changes whenever the underlying data does — re-keys the panel so entrance
+   *  animations and count-ups re-fire on a fresh read (and only then). */
+  const dataKey = data?.lastUpdated ?? "static";
 
   const cellStyleComputed = (row: SheetsCell[], colIdx: number): React.CSSProperties => {
     const color = computeCellColor(row, colIdx, theme);
@@ -963,133 +1025,169 @@ export default function GoogleSheets() {
           </div>
         ) : null}
 
-        {/* Breadth Terminal Analysis */}
-        {breadthAnalysis && (
-          <div
-            className="rounded-lg border mb-3 max-w-[1600px] mx-auto overflow-hidden"
-            style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
-          >
-            {/* Header + Regime + Toggle */}
+        {/* Breadth Terminal Analysis — always-on status line + expandable detail */}
+        {breadthAnalysis && (() => {
+          const a = breadthAnalysis;
+          const tint = REGIME_TINT[a.regime.signal];
+          const [stanceVerb, ...stanceRestArr] = a.stance.split(" — ");
+          const stanceRest = stanceRestArr.join(" — ");
+          const { up, down, bullish, label: primaryLabel, trajectory } = a.primary;
+          const total = up + down;
+          const upPct = total > 0 ? (up / total) * 100 : 50;
+          const net = up - down;
+          const Divider = ({ className = "" }: { className?: string }) => (
+            <div className={`w-px h-7 flex-shrink-0 ${className}`} style={{ background: "var(--terminal-border)" }} />
+          );
+          return (
             <div
-              className="flex items-center justify-between px-4 py-2.5 cursor-pointer select-none"
-              style={{ borderBottom: showAnalysis ? "1px solid var(--terminal-border)" : "none" }}
-              onClick={toggleAnalysis}
+              className="rounded-lg border mb-3 max-w-[1600px] mx-auto overflow-hidden"
+              style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
             >
-              <div className="flex items-center gap-2">
-                <Brain className="w-3.5 h-3.5" style={{ color: "var(--terminal-cyan)" }} />
-                <span className="text-[10px] font-bold tracking-[0.12em] uppercase" style={{ color: "var(--terminal-cyan)" }}>
-                  Terminal Analysis
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {!showAnalysis && (
-                  <span className="text-[10px] font-bold" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
-                    {breadthAnalysis.stance}
+              {/* ── STATUS LINE — always visible, the decision in one dense strip ── */}
+              <button
+                type="button"
+                onClick={toggleAnalysis}
+                aria-expanded={showAnalysis}
+                className="ta-strip w-full flex items-stretch text-left select-none transition-colors hover:brightness-[1.02]"
+                style={{ background: tint.bg, borderBottom: showAnalysis ? "1px solid var(--terminal-border)" : "none" }}
+              >
+                {/* Identity + Regime */}
+                <div className="flex items-center gap-2 pl-3.5 pr-3 py-2.5 flex-shrink-0">
+                  <Brain className="w-3.5 h-3.5 hidden sm:block" style={{ color: "var(--terminal-cyan)" }} />
+                  <span className="w-2 h-2 rounded-full pulse-live flex-shrink-0" style={{ background: tint.color }} />
+                  <span className="text-[13px] font-black tracking-[0.03em]" style={{ color: tint.color }}>{a.regime.label}</span>
+                </div>
+
+                <Divider className="self-center" />
+
+                {/* Stance — verb + truncated rationale */}
+                <div className="flex items-baseline gap-2.5 px-3.5 py-2.5 min-w-0 flex-1">
+                  <span className="text-[12px] font-black uppercase tracking-[0.03em] flex-shrink-0 self-center" style={{ color: tint.color }}>{stanceVerb}</span>
+                  {stanceRest && (
+                    <span className="text-[11px] truncate hidden md:block self-center" style={{ color: "var(--text-secondary)" }}>{stanceRest}</span>
+                  )}
+                </div>
+
+                <Divider className="self-center hidden lg:block" />
+
+                {/* Breadth — live meter: counts count up, halves draw out from a glowing seam (desktop only) */}
+                <div className="hidden lg:flex items-center gap-2.5 px-3.5 py-2.5 flex-shrink-0 font-mono" style={{ fontVariantNumeric: "tabular-nums lining-nums" }}>
+                  <span className="text-[11px] font-bold" style={{ color: "var(--terminal-green)" }}>
+                    <CountUp value={up} refresh={dataKey} duration={1400} /><span className="text-[8px]" style={{ color: "var(--text-muted)" }}> ▲</span>
                   </span>
-                )}
-                <div className="flex items-center gap-1.5">
+                  <div
+                    key={dataKey}
+                    className="ta-mini-meter relative w-[88px] h-1.5 rounded-full overflow-hidden flex flex-shrink-0"
+                    style={{ background: "var(--bar-track)", boxShadow: "inset 0 1px 1.5px rgba(0,0,0,0.18)" }}
+                  >
+                    <div className="ta-mini-up h-full" style={{ width: `${upPct}%`, background: "var(--terminal-green)" }} />
+                    <div className="ta-mini-down h-full" style={{ width: `${100 - upPct}%`, background: "var(--terminal-red)" }} />
+                    <span className="ta-mini-seam" style={{ left: `${upPct}%` }} />
+                  </div>
+                  <span className="text-[11px] font-bold" style={{ color: "var(--terminal-red)" }}>
+                    <span className="text-[8px]" style={{ color: "var(--text-muted)" }}>▼ </span><CountUp value={down} refresh={dataKey} duration={1400} />
+                  </span>
                   <span
-                    className="w-2 h-2 rounded-full pulse-live"
-                    style={{ background: REGIME_COLORS[breadthAnalysis.regime.signal] }}
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm"
+                    style={{ color: net >= 0 ? "var(--terminal-green)" : "var(--terminal-red)", background: net >= 0 ? "var(--gain-chip-bg)" : "var(--loss-chip-bg)" }}
+                  >
+                    {net >= 0 ? "+" : "−"}<CountUp value={Math.abs(net)} refresh={dataKey} duration={1500} />
+                  </span>
+                </div>
+
+                <Divider className="self-center" />
+
+                {/* What expanding reveals + chevron */}
+                <div className="flex items-center gap-3 pl-3.5 pr-3.5 py-2.5 flex-shrink-0">
+                  <span className="hidden lg:flex items-baseline gap-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    <span className="font-bold" style={{ color: "var(--text-secondary)" }}>{a.keySignals.length}</span> signals
+                    <span className="mx-0.5" style={{ color: "var(--text-faint)" }}>·</span>
+                    <span className="font-bold" style={{ color: "var(--text-secondary)" }}>{a.significantEvents.length}</span> events
+                  </span>
+                  <span className="hidden sm:inline lg:hidden text-[10px] font-bold tracking-wide uppercase" style={{ color: "var(--text-muted)" }}>
+                    {showAnalysis ? "Less" : "Details"}
+                  </span>
+                  <ChevronDown
+                    className="w-4 h-4 transition-transform duration-300 flex-shrink-0"
+                    style={{ color: "var(--text-faint)", transform: showAnalysis ? "rotate(180deg)" : "rotate(0deg)" }}
                   />
-                  <span className="text-xs font-black tracking-wide" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
-                    {breadthAnalysis.regime.label}
-                  </span>
                 </div>
-                <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{showAnalysis ? "▲" : "▼"}</span>
-              </div>
-            </div>
+              </button>
 
-            {showAnalysis && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
-              {/* Left column: Primary Trend + Key Signals */}
-              <div className="px-4 py-3 xl:border-r" style={{ borderColor: "var(--terminal-border)" }}>
-                {/* Primary Trend */}
-                <div className="mb-3">
-                  <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Primary Trend</span>
-                  <p className="text-[11px] leading-[1.5] mt-1" style={{ color: "var(--text-secondary)" }}>{breadthAnalysis.primaryTrend}</p>
-                </div>
+              {/* ── DETAIL — expandable reasoning ── */}
+              {showAnalysis && (
+                <div key={dataKey} className="grid grid-cols-1 xl:grid-cols-2 gap-0">
+                  {/* LEFT: Primary Trend + Key Signals */}
+                  <div className="px-4 py-3 xl:border-r" style={{ borderColor: "var(--terminal-border)" }}>
+                    <div className="mb-3">
+                      <TaLabel trailing={
+                        <span className="text-[10px] font-bold tracking-wide uppercase" style={{ color: bullish ? "var(--terminal-green)" : "var(--terminal-red)" }}>
+                          {primaryLabel}
+                        </span>
+                      }>Primary Trend</TaLabel>
+                      <p className="ta-reveal text-[11px] leading-[1.5]" style={{ animationDelay: "40ms", color: "var(--text-secondary)" }}>{trajectory}</p>
+                    </div>
 
-                {/* Key Signals */}
-                {breadthAnalysis.keySignals.length > 0 && (
-                  <div>
-                    <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Key Signals</span>
-                    <div className="mt-1.5 space-y-1.5">
-                      {breadthAnalysis.keySignals.map((sig, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <span
-                            className="mt-[3px] w-1.5 h-1.5 rounded-full flex-shrink-0"
-                            style={{
-                              background:
-                                sig.type === "bullish" ? "var(--terminal-green)"
-                                : sig.type === "bearish" ? "var(--terminal-red)"
-                                : "var(--terminal-amber)",
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <div
-                              className="text-[10px] font-bold leading-[1.4]"
-                              style={{
-                                color:
-                                  sig.type === "bullish" ? "var(--terminal-green)"
-                                  : sig.type === "bearish" ? "var(--terminal-red)"
-                                  : "var(--terminal-amber)",
-                              }}
-                            >
-                              {sig.label}
+                    <div>
+                      <TaLabel>Key Signals</TaLabel>
+                      {a.keySignals.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {a.keySignals.map((sig, i) => {
+                            const col = SIGNAL_COLOR[sig.type];
+                            const delay = `${120 + i * 45}ms`;
+                            return (
+                              <div key={i} className="ta-reveal flex items-start gap-2.5" style={{ animationDelay: delay }}>
+                                <span
+                                  className="ta-dot mt-[5px] w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                  style={{ background: col, ["--ta-glow" as string]: col, animationDelay: delay }}
+                                />
+                                <div className="min-w-0">
+                                  <div className="text-[10px] font-bold leading-[1.35]" style={{ color: col }}>{sig.label}</div>
+                                  <div className="text-[10px] leading-[1.4]" style={{ color: "var(--text-secondary)" }}>{sig.detail}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>No notable signals on the latest read.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT: Significant Events + Assessment */}
+                  <div className="px-4 py-3 border-t xl:border-t-0" style={{ borderColor: "var(--terminal-border)" }}>
+                    <div className="mb-3">
+                      <TaLabel>Significant Events · Recent</TaLabel>
+                      {a.significantEvents.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {a.significantEvents.map((evt, i) => (
+                            <div key={i} className="ta-reveal flex items-start gap-2" style={{ animationDelay: `${120 + i * 45}ms` }}>
+                              <span className="text-[10px] font-mono flex-shrink-0 mt-px" style={{ color: "var(--text-faint)" }}>▸</span>
+                              <p className="text-[10px] leading-[1.45]" style={{ color: "var(--text-secondary)" }}>
+                                {evt.date && (
+                                  <span className="inline-block font-mono font-bold text-[9px] px-1 py-px rounded mr-1.5 align-middle" style={{ background: "var(--terminal-cyan)", color: "var(--terminal-bg)", opacity: 0.9 }}>{evt.date}</span>
+                                )}
+                                {evt.description}
+                              </p>
                             </div>
-                            <div className="text-[10px] leading-[1.4]" style={{ color: "var(--text-muted)" }}>{sig.detail}</div>
-                          </div>
+                          ))}
                         </div>
-                      ))}
+                      ) : (
+                        <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>No threshold events in the recent window.</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <TaLabel>Assessment</TaLabel>
+                      <p className="text-[11px] leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{a.assessment}</p>
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* Right column: Significant Events + Assessment + Stance */}
-              <div className="px-4 py-3 border-t xl:border-t-0" style={{ borderColor: "var(--terminal-border)" }}>
-                {/* Significant Events */}
-                {breadthAnalysis.significantEvents.length > 0 && (
-                  <div className="mb-3">
-                    <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Significant Events (Recent)</span>
-                    <div className="mt-1.5 space-y-1.5">
-                      {breadthAnalysis.significantEvents.map((evt, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <span className="text-[10px] font-mono flex-shrink-0 mt-px" style={{ color: "var(--text-faint)" }}>▸</span>
-                          <p className="text-[10px] leading-[1.5]" style={{ color: "var(--text-secondary)" }}>
-                            {evt.date && (
-                              <span className="inline-block font-mono font-bold text-[9px] px-1 py-px rounded mr-1.5 align-middle" style={{ background: "var(--terminal-cyan)", color: "var(--terminal-bg)", opacity: 0.9 }}>{evt.date}</span>
-                            )}
-                            {evt.description}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Assessment */}
-                <div className="mb-3">
-                  <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: "var(--text-faint)" }}>Assessment</span>
-                  <p className="text-[11px] leading-[1.6] mt-1" style={{ color: "var(--text-secondary)" }}>{breadthAnalysis.assessment}</p>
                 </div>
-
-                {/* Stance */}
-                <div
-                  className="flex items-center gap-2 pt-2"
-                  style={{ borderTop: "1px solid var(--terminal-border)" }}
-                >
-                  <span className="text-[9px] font-bold tracking-wider" style={{ color: "var(--text-faint)" }}>STANCE</span>
-                  <span className="text-[10px] font-bold" style={{ color: REGIME_COLORS[breadthAnalysis.regime.signal] }}>
-                    {breadthAnalysis.stance}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         {data && data.rows.length > 0 ? (
           <div className="rounded-lg border overflow-hidden max-w-[1600px] mx-auto" style={{ borderColor: "var(--terminal-border)" }}>
