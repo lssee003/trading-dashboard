@@ -527,6 +527,22 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     }
   }
 
+  // Participation trajectory — the roll-off from the recent peak is an early warning that
+  // PRECEDES the binary flip. Stockbee acts on this before the up/down cross actually happens.
+  if (qtrBullish && rollPctUp >= 0.15 && up25q > 200) {
+    significantEvents.push({
+      rowIndex: 0,
+      date: getRowDate(validRows[0]),
+      description: `Participation deteriorating — the quarterly up-count has rolled ${rollOffUp.toLocaleString()} stocks (~${Math.round(rollPctUp * 100)}%) off its recent high of ${peakUp.toLocaleString()}. Money is leaving the market ahead of any primary flip — be proactively defensive: tighten stops and stop adding new longs.`,
+    });
+  } else if (!qtrBullish && rollPctDown >= 0.15 && down25q > 200) {
+    significantEvents.push({
+      rowIndex: 0,
+      date: getRowDate(validRows[0]),
+      description: `Selling exhausting — the quarterly down-count has rolled ${rollOffDown.toLocaleString()} stocks (~${Math.round(rollPctDown * 100)}%) off its recent high of ${peakDown.toLocaleString()}. Downside pressure is fading; watch for a primary flip or a breadth thrust to confirm a turn before going long.`,
+    });
+  }
+
   // Detect breadth thrusts (300+ up 4% days)
   const thrustDays = recent
     .map((r, i) => ({ ...r, idx: i }))
@@ -552,18 +568,24 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
         description: `Buying thrust day — ${biggest.up4.toLocaleString()} stocks up 4%+. Above-average buying pressure indicates institutional accumulation.`,
       });
     }
-    // Back-to-back thrusts
-    const consecutiveThrusts = thrustDays.filter(
-      (d) => d.idx <= 4,
-    ).length;
-    if (consecutiveThrusts >= 2) {
-      const peelNote = inLateBurstWindow
-        ? ` Day ${burstDay} of momentum burst — consider peeling 70-80% of longs. Bursts typically exhaust by Day 3-5; lock in profits and move stops to breakeven.`
-        : "";
+    // Thrust clustering in the last 5 sessions — a TRUE breadth thrust is back-to-back 1,000+
+    // days (Stockbee's major-bottom signal); smaller clusters are just above-average buying.
+    const peelNote = inLateBurstWindow
+      ? ` Day ${burstDay} of momentum burst — consider peeling 70-80% of longs. Bursts typically exhaust by Day 3-5; lock in profits and move stops to breakeven.`
+      : "";
+    const thrustDaysLast5 = thrustDays.filter((d) => d.idx <= 4);
+    const bigThrustDaysLast5 = thrustDaysLast5.filter((d) => d.up4 >= 1000);
+    if (bigThrustDaysLast5.length >= 2) {
       significantEvents.push({
         rowIndex: 0,
         date: getRowDate(validRows[0]),
-        description: `${consecutiveThrusts} buying thrust days (300+ up 4%) in the last 5 sessions — a sustained breadth thrust confirms a durable rally rather than a temporary bounce.${peelNote}`,
+        description: `Breadth thrust confirmed — ${bigThrustDaysLast5.length} days of 1,000+ stocks up 4% in the last 5 sessions. Back-to-back 1,000+ days are the definitive market-bottom / new-bull signal (2009 precedent) — duration bullish, be aggressively long.${peelNote}`,
+      });
+    } else if (thrustDaysLast5.length >= 2) {
+      significantEvents.push({
+        rowIndex: 0,
+        date: getRowDate(validRows[0]),
+        description: `${thrustDaysLast5.length} above-average buying days (300+ up 4%) in the last 5 sessions — repeated buying pressure, constructive for breakouts.${peelNote}`,
       });
     }
   }
@@ -594,8 +616,22 @@ function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | nu
     });
   }
 
-  // Peak exuberance — up50m >= 20 AND T2108 near recent peak (≥60)
-  // This is the "peel longs" signal from January 15-type scenarios
+  // Continuous stretch of selling — N consecutive negative-breadth sessions (persistence, not
+  // one bad day). Stockbee reads a run like 634 → 667 → 437 → 450 down as deterioration.
+  let negStreak = 0;
+  for (let i = 0; i < recent.length; i++) {
+    if (recent[i].down4 > recent[i].up4) negStreak++; else break;
+  }
+  if (negStreak >= 3) {
+    const negSeq = recent.slice(0, negStreak).map(r => r.down4).reverse();
+    significantEvents.push({
+      rowIndex: 0,
+      date: getRowDate(validRows[0]),
+      description: `Continuous stretch of selling — ${negStreak} straight sessions of negative breadth (down 4% by day: ${negSeq.map(v => v.toLocaleString()).join(" → ")}). Persistent distribution like this is how participation rolls over; treat rallies as exits until breadth turns positive.`,
+    });
+  }
+
+  // Peak exuberance — Red Hot (up50m ≥ 20) AND T2108 overbought (>70): the blowout / peel signal.
   const exuberanceDays = recent
     .map((r, i) => ({ ...r, idx: i }))
     .filter((r) => r.up50m >= 20 && r.t2108 > 70);
