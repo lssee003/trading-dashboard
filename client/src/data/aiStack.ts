@@ -57,7 +57,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
       { ticker: "EME", name: "EMCOR", role: "Record $4.3B network & comms backlog — data center electrical" },
       { ticker: "ETN", name: "Eaton", role: "Electrical equipment + acquired Motivair liquid cooling" },
       { ticker: "POWL", name: "Powell Industries", role: "Medium-voltage switchgear — $400M record AI data center order" },
-      { ticker: "HUB.B", name: "Hubbell", role: "Grid components for bidirectional power & EV charging" },
+      { ticker: "HUBB", name: "Hubbell", role: "Grid components for bidirectional power & EV charging" },
       { ticker: "GEV", name: "GE Vernova", role: "Grid modernization hardware & software (also L1)" },
     ],
   },
