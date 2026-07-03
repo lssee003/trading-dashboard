@@ -285,6 +285,675 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* ---------- Glass Mode (iOS Liquid Glass) ----------
+   Applied as `.glass` ON TOP of `.dark` — inherits the Bloomberg dark
+   variables and overrides only what the glass material changes.
+   Panels opt in via .glass-panel / .glass-chrome; untagged surfaces
+   (data tables, tooltips, sticky cells) stay opaque for legibility. */
+.glass {
+  /* Page background is a fixed wallpaper on body; containers go clear */
+  --terminal-bg: transparent;
+
+  /* Untagged surfaces stay opaque — slightly bluer than the dark theme */
+  --terminal-surface: #0e1626;
+  --terminal-surface-2: #172138;
+  --terminal-border: rgba(148, 186, 255, 0.16);
+
+  /* Overlays read against glass, so they run a touch brighter */
+  --overlay-subtle: rgba(255, 255, 255, 0.04);
+  --overlay-light: rgba(255, 255, 255, 0.08);
+  --overlay-medium: rgba(255, 255, 255, 0.14);
+
+  /* Muted text one step brighter — panels sit over luminous color
+     fields, so the dark theme's muted value dips below AA here */
+  --text-muted: #8ba0b6;
+
+  --ticker-bg: transparent;
+  --chip-bg: rgba(255, 255, 255, 0.08);
+  --bar-track: rgba(255, 255, 255, 0.08);
+  --circle-track: rgba(255, 255, 255, 0.09);
+  /* dark backing strip: sector rows keep signal-colored values legible
+     when the metal's bright regions pass behind the panel */
+  --sector-bar-bg: rgba(5, 9, 20, 0.65);
+
+  /* Decision panel: NEUTRAL white glass (the Figma Group 7 recipe) — the
+     verdict hue is not painted on the body; it comes from the .hero-blob
+     plus-lighter light blobs drifting inside the glass. All three
+     verdicts share the same slab; only the light changes. */
+  --decision-green-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.09)), rgba(10, 17, 34, 0.30);
+  --decision-amber-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.09)), rgba(10, 17, 34, 0.30);
+  --decision-red-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.09)), rgba(10, 17, 34, 0.30);
+
+  /* Alert banner: same neutral slab as the hero — the amber lives in
+     its light blobs (markup in AlertBanner), not the fill */
+  --alert-amber-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.09)), rgba(10, 17, 34, 0.30);
+
+  --scan-sweep-color: rgba(255, 255, 255, 0.05);
+  --scan-sweep-peak: rgba(255, 255, 255, 0.12);
+}
+
+/* Wallpaper — deep indigo-navy with soft light fields for the blur to
+   reveal. Fixed so panels feel like glass sliding over it on scroll. */
+.glass body {
+  background-color: #05070f;
+  background-image:
+    radial-gradient(1200px 800px at 12% -10%, rgba(56, 130, 246, 0.08), transparent 62%),
+    radial-gradient(1000px 700px at 88% 8%, rgba(124, 88, 250, 0.07), transparent 58%),
+    linear-gradient(180deg, #070b18 0%, #05070f 100%);
+  background-attachment: fixed;
+}
+
+/* ── Liquid glass backdrop ───────────────────────────────────────────
+   A fixed layer behind all content (negative z-index inside the root
+   stacking context: above the body wallpaper, below every panel).
+   The procedural WebGL scene (client/src/background) renders into
+   .liquid-canvas: starfield, volumetric light, glass distortion
+   field, raymarched glass sculpture, post processing. If WebGL2 is
+   unavailable the .liquid-blob CSS fallback takes over — two
+   asymmetric neutral blobs on transform-only keyframes plus a conic
+   sheen, so the theme keeps a backdrop everywhere. */
+.liquid-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  animation: liquid-fade-in 1600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Noise grain: dithers gradient banding and gives the material tooth */
+.liquid-field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+}
+
+/* The WebGL scene — the engine handles DPR, adaptive resolution,
+   reduced motion (single still frame) and hidden-tab pausing itself */
+.liquid-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* CSS fallback (WebGL2 unavailable / context lost): neutral silver-blue
+   blobs — the scene is decoration, so the fallback carries no signal */
+.liquid-blob {
+  position: absolute;
+  will-change: transform;
+}
+
+.liquid-a {
+  width: 78vmax;
+  height: 64vmax;
+  left: -10vmax;
+  top: -14vmax;
+  background: radial-gradient(closest-side at 48% 50%,
+    rgba(148, 163, 184, 0.24) 0%,
+    rgba(96, 165, 250, 0.16) 46%,
+    transparent 76%);
+  border-radius: 45% 55% 52% 48% / 58% 44% 56% 42%;
+  animation: liquid-drift-a 90s ease-in-out infinite alternate;
+}
+
+.liquid-b {
+  width: 62vmax;
+  height: 54vmax;
+  right: -12vmax;
+  bottom: -14vmax;
+  background: radial-gradient(closest-side at 52% 50%,
+    rgba(148, 163, 184, 0.24) 0%,
+    rgba(96, 165, 250, 0.16) 44%,
+    transparent 74%);
+  border-radius: 55% 45% 48% 52% / 45% 58% 42% 55%;
+  animation: liquid-drift-b 130s ease-in-out infinite alternate;
+}
+
+/* Rotating specular arc — the slow glassy shine */
+.liquid-sheen {
+  position: absolute;
+  inset: -25%;
+  background: conic-gradient(from 20deg at 58% 42%,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.035) 42deg,
+    rgba(255, 255, 255, 0.015) 80deg,
+    transparent 130deg,
+    rgba(203, 213, 225, 0.09) 210deg,
+    transparent 260deg);
+  will-change: transform;
+  animation: liquid-sheen-spin 160s linear infinite;
+}
+
+@keyframes liquid-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes liquid-drift-a {
+  0%   { transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1); }
+  33%  { transform: translate3d(7%, 5%, 0) rotate(38deg) scale(1.14); }
+  66%  { transform: translate3d(-3%, 9%, 0) rotate(74deg) scale(0.94); }
+  100% { transform: translate3d(9%, -2%, 0) rotate(115deg) scale(1.06); }
+}
+
+@keyframes liquid-drift-b {
+  0%   { transform: translate3d(4%, 6%, 0) rotate(0deg) scale(1); }
+  40%  { transform: translate3d(-8%, -3%, 0) rotate(-46deg) scale(1.12); }
+  70%  { transform: translate3d(3%, -8%, 0) rotate(-88deg) scale(0.92); }
+  100% { transform: translate3d(-5%, 4%, 0) rotate(-130deg) scale(1.04); }
+}
+
+@keyframes liquid-sheen-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Reduced motion: the fallback blobs hold still; the WebGL engine
+   freezes itself to a single composed frame */
+@media (prefers-reduced-motion: reduce) {
+  .liquid-field { animation: none; }
+  .liquid-blob,
+  .liquid-sheen {
+    animation: none !important;
+    will-change: auto;
+  }
+}
+
+/* The glass material — blur + saturation boost + specular top edge.
+   backdrop-filter needs the element itself translucent to show through. */
+.glass .glass-panel:not(.glass-still),
+.glass .category-panel,
+.glass .glass-chrome {
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  backdrop-filter: blur(22px) saturate(1.7);
+}
+
+.glass .glass-panel,
+.glass .category-panel,
+.glass .glass-chrome {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 12px 32px rgba(3, 7, 18, 0.45);
+}
+
+/* .glass-still: glass fill without backdrop-filter — for panels with
+   position:fixed descendants (blur would become their containing block
+   and break viewport-anchored tooltips). Denser base + darker nested
+   surfaces compensate for the missing blur. */
+.glass .glass-panel.glass-still {
+  --terminal-surface: rgba(10, 16, 32, 0.92);
+  --terminal-surface-2: rgba(23, 33, 56, 0.92);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.04) 100%),
+    rgba(12, 19, 38, 0.72) !important;
+}
+
+/* Standard panels: translucent fill replaces the opaque surface.
+   !important is required to beat inline `background: var(--terminal-surface)`.
+   Nested layers inside a glass panel resolve to subtle white tints. */
+.glass .glass-panel:not(.glass-tint):not(.glass-still),
+.glass .category-panel {
+  --terminal-surface: rgba(255, 255, 255, 0.06);
+  --terminal-surface-2: rgba(255, 255, 255, 0.10);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.05) 100%),
+    rgba(12, 19, 38, 0.50) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* .glass-tint panels (decision hero, alert banner) keep their own
+   signal-tinted background and border; the material adds the liquid-
+   glass white inset rim so the tint reads as a colored lens, not a
+   painted surface. */
+.glass .glass-panel.glass-tint {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.40),
+    inset -1px -1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 0 4px rgba(255, 255, 255, 0.30),
+    0 12px 32px rgba(3, 7, 18, 0.45);
+}
+
+/* The light/dark radial glow is replaced by the blob field in glass */
+.glass .hero-glow {
+  display: none;
+}
+
+/* ── Verdict light field ─────────────────────────────────────────────
+   The Figma Group 7 construction: color lives as soft blurred lights
+   INSIDE the neutral glass (plus-lighter, blur 30px), not as a tint on
+   it. Three blobs — the signal hue, an indigo-deepened companion, and a
+   small white specular — drift on slow transform-only loops. Hidden
+   outside the glass theme. */
+.hero-lights,
+.hero-gauge-lights {
+  display: none;
+}
+
+.glass .hero-lights {
+  display: block;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.glass .hero-blob {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: plus-lighter;
+  filter: blur(30px);
+  will-change: transform;
+}
+
+.glass .hero-blob-a {
+  width: 190px;
+  height: 116px;
+  right: 16%;
+  top: 26%;
+  background: color-mix(in srgb, var(--blob-color, #94a3b8) 52%, transparent);
+  animation: hero-blob-a 26s ease-in-out infinite alternate;
+}
+
+.glass .hero-blob-b {
+  width: 150px;
+  height: 96px;
+  left: 32%;
+  bottom: -18%;
+  background: color-mix(in srgb, color-mix(in srgb, var(--blob-color, #94a3b8) 58%, #312e81) 55%, transparent);
+  animation: hero-blob-b 34s ease-in-out infinite alternate;
+}
+
+.glass .hero-blob-c {
+  width: 80px;
+  height: 62px;
+  left: 10%;
+  top: -12%;
+  background: rgba(255, 255, 255, 0.20);
+  animation: hero-blob-c 22s ease-in-out infinite alternate;
+}
+
+@keyframes hero-blob-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-48px, 16px, 0) scale(1.16); }
+  100% { transform: translate3d(26px, -12px, 0) scale(0.92); }
+}
+
+@keyframes hero-blob-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  45%  { transform: translate3d(52px, -14px, 0) scale(1.12); }
+  100% { transform: translate3d(-30px, 8px, 0) scale(0.95); }
+}
+
+@keyframes hero-blob-c {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(34px, 12px, 0) scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass .hero-blob { animation: none; }
+}
+
+/* Verdict text sits on near-transparent glass; a dark halo keeps the
+   signal color legible when a bright backdrop region passes behind. */
+.glass .hero-verdict {
+  text-shadow:
+    0 0 6px rgba(3, 7, 18, 0.9),
+    0 1px 3px rgba(3, 7, 18, 0.85);
+}
+
+/* Market-quality gauge, the full Figma Group 7 stack: a dark backing
+   disc (::before), the blob cluster (.hero-gauge-lights, z between the
+   pseudos), then a NEUTRAL white glass disc (::after) whose blur(3px)
+   frosts the lights beneath it. The score numeral goes white — the arc
+   and verdict label carry the signal hue. */
+.glass .hero-gauge {
+  isolation: isolate;
+  text-shadow:
+    0 0 4px rgba(3, 7, 18, 0.85),
+    0 1px 2px rgba(3, 7, 18, 0.80);
+}
+.glass .hero-gauge::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: -3;
+  border-radius: 9999px;
+  background: rgba(9, 14, 28, 0.78);
+  box-shadow: 0 0 0 6px rgba(3, 7, 18, 0.14);
+}
+.glass .hero-gauge-lights {
+  display: block;
+  position: absolute;
+  inset: 3px;
+  z-index: -2;
+  border-radius: 9999px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.glass .hero-gauge-blob-a {
+  width: 42px;
+  height: 50px;
+  left: 8%;
+  bottom: 2%;
+  filter: blur(16px);
+  background: color-mix(in srgb, var(--gauge-color, #94a3b8) 44%, transparent);
+  animation: hero-gauge-blob-a 18s ease-in-out infinite alternate;
+}
+.glass .hero-gauge-blob-b {
+  width: 34px;
+  height: 40px;
+  left: 60%;
+  top: 62%;
+  filter: blur(16px);
+  background: color-mix(in srgb, color-mix(in srgb, var(--gauge-color, #94a3b8) 60%, #312e81) 32%, transparent);
+  animation: hero-gauge-blob-b 24s ease-in-out infinite alternate;
+}
+@keyframes hero-gauge-blob-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(14px, -12px, 0) scale(1.15); }
+}
+@keyframes hero-gauge-blob-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(-10px, 8px, 0) scale(0.9); }
+}
+.glass .hero-gauge::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: -1;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.40),
+    inset -1px -1px 1px rgba(255, 255, 255, 0.25),
+    inset 1px 1px 4px rgba(255, 255, 255, 0.60),
+    inset 0 0 1px rgba(255, 255, 255, 0.40);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.glass .hero-gauge .hero-score-num {
+  color: #f8fafc !important;
+}
+.glass .hero-gauge .hero-score-den {
+  color: rgba(238, 242, 247, 0.85) !important;
+}
+
+/* Chrome: sticky ticker strip + app header. Denser tint and heavier
+   blur since live content scrolls directly beneath them. */
+.glass .glass-chrome {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(7, 11, 24, 0.62) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Active-nav pill: blue accent fill in light/dark; in glass it becomes
+   a liquid-glass lens — translucent white gradient with a specular top
+   edge, its own blur so the wallpaper refracts through it. */
+.nav-active-pill {
+  background: var(--terminal-blue);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--terminal-blue) 40%, transparent),
+    0 0 4px color-mix(in srgb, var(--terminal-blue) 20%, transparent);
+}
+
+.glass .nav-active-pill {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.24),
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.14)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: blur(10px) saturate(1.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10),
+    0 4px 14px rgba(3, 7, 18, 0.35);
+}
+
+/* Active segmented controls & primary buttons: blue fill in light/dark,
+   the same lens material as the nav pill in glass. !important beats the
+   inline `background: var(--terminal-blue)` active styles; the element
+   selector outranks .rrg-overdrive-btn.rrg-active's box-shadow reset. */
+.glass button.seg-active {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.24),
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.14)
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: blur(10px) saturate(1.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+}
+
+/* Inline pill-toggle slider (5D/10D, MTH/QTR): the same lens as the nav
+   pill at 18px scale — brighter mix because tiny areas read dimmer, a
+   hairline ring instead of a border so the slider's measured size holds. */
+.glass .pill-toggle-slider {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.30),
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.18)
+  ) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(1.5);
+  backdrop-filter: blur(6px) saturate(1.5);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.40),
+    0 1px 4px rgba(3, 7, 18, 0.35);
+}
+
+/* Breadth data table: dense glass shell. Scoping --terminal-surface here
+   makes the sticky header rows and frozen date column resolve to a
+   near-opaque navy, so data scrolling beneath the frozen cells never
+   bleeds through, while ordinary cells stay open to the glass. */
+.glass .breadth-shell {
+  --terminal-surface: rgba(15, 22, 42, 0.97);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.04) 100%),
+    rgba(12, 19, 38, 0.55);
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  backdrop-filter: blur(22px) saturate(1.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 12px 32px rgba(3, 7, 18, 0.45);
+}
+
+/* Sticky header cells and the frozen date column: Chromium computes
+   but never paints backdrop-filter on table-cell boxes (tested — the
+   rows never frost), so real per-cell blur is off the table. Instead
+   the frozen cells run a dense-but-translucent fill: glassy against
+   the shell's blurred wallpaper, opaque enough that data scrolling
+   beneath reads only as a faint sheen, never as legible text. */
+.glass .breadth-shell thead th {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+.glass .breadth-shell thead th:first-child {
+  background: var(--terminal-surface) !important;
+}
+
+/* Significant-event date chip: cyan-lit mini lens. Also fixes the
+   invisible dates — the chip's text color was var(--terminal-bg),
+   which resolves to transparent in this theme. */
+.glass .evt-date-pill {
+  background: color-mix(in srgb, var(--terminal-cyan) 24%, rgba(10, 16, 32, 0.40)) !important;
+  color: #eafcff !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* Hover tooltips (metric explainers, RRG dots): frosted dark lens —
+   dense enough to stay readable over any signal color it floats above */
+.glass .glass-tooltip {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03)),
+    rgba(8, 13, 26, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    0 12px 32px rgba(3, 7, 18, 0.55);
+}
+
+/* Signal bars as luminous glass rods: no rim, no white sheen — a single
+   hue gradient along the bar axis from a pale translucent base to the
+   fully saturated tip, plus a soft glow of the same hue. --bar-color is
+   the signal color set inline by the component; --bar-dir points the
+   gradient at the bar's tip (90deg = grows rightward, 270deg = leftward). */
+.glass .glass-bar {
+  /* Built from the iOS 26 Figma spec: the bar is a ~1%-alpha glass pill
+     (backdrop blur does the frosting), the rim is white inset highlights,
+     and ALL color comes from two blurred light fields fixed to the CHART,
+     not the bar — a brighter one at the track's max end and a softer,
+     indigo-deepened one at the base, together covering the full track
+     (the Figma's overlapping blue/purple 100px-blur ellipses). Both are
+     background-sized to the track via --bar-span (the bar's value, 0–100)
+     so each bar clips its slice of the shared field: every bar is
+     luminous along its whole length, taller bars reach into the brighter
+     region. --bar-tip-x / --bar-base flip for right-anchored bars. */
+  background:
+    radial-gradient(
+      75% 300% at var(--bar-tip-x, 100%) 42%,
+      color-mix(in srgb, var(--bar-color, #94a3b8) 60%, transparent) 0%,
+      color-mix(in srgb, var(--bar-color, #94a3b8) 30%, transparent) 52%,
+      transparent 88%
+    ),
+    radial-gradient(
+      72% 280% at calc(100% - var(--bar-tip-x, 100%)) 64%,
+      color-mix(in srgb, color-mix(in srgb, var(--bar-color, #94a3b8) 72%, #1e1b4b) 42%, transparent) 0%,
+      color-mix(in srgb, color-mix(in srgb, var(--bar-color, #94a3b8) 72%, #1e1b4b) 18%, transparent) 58%,
+      transparent 92%
+    ),
+    rgba(255, 255, 255, 0.02) !important;
+  background-size:
+    calc(10000% / max(var(--bar-span, 100), 1)) 100%,
+    calc(10000% / max(var(--bar-span, 100), 1)) 100%,
+    100% 100% !important;
+  background-position: var(--bar-base, left) center, var(--bar-base, left) center, 0 0 !important;
+  background-repeat: no-repeat !important;
+  box-shadow:
+    inset 1px 1px 1px rgba(255, 255, 255, 0.40),
+    inset -1px -1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 0 4px rgba(255, 255, 255, 0.60);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  border-radius: 9999px;
+  opacity: 1 !important;
+}
+
+/* The breadth up/down meter segments share one continuous capsule —
+   the container is the pill, so the segments stay square at the seam */
+.glass .ta-mini-up.glass-bar,
+.glass .ta-mini-down.glass-bar {
+  border-radius: 0;
+}
+
+/* Every glass bar sits in a visible full-length tube (the Figma's
+   #3A3838 rounded track, translated to the navy palette): a slate lift
+   over a dark base so the track reads as a channel the pill slides in,
+   with a hairline ring tracing its edge. */
+.glass div:has(> .glass-bar) {
+  border-radius: 9999px;
+  background:
+    linear-gradient(rgba(148, 163, 184, 0.13), rgba(148, 163, 184, 0.13)),
+    rgba(8, 13, 26, 0.60) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Signal-colored values that sit on top of the milky bar body need a dark
+   halo to stay readable over the pale glass */
+.glass .sector-value {
+  text-shadow:
+    0 0 3px rgba(3, 7, 18, 0.9),
+    0 1px 2px rgba(3, 7, 18, 0.85);
+}
+
+/* RS histogram (SVG): same recipe per bar via shared paint servers —
+   pale at the baseline, saturated at the tip (defs live in App.tsx) */
+.glass .rs-bar { fill-opacity: 1; }
+.glass .rs-bar-pos { fill: url(#rs-glass-pos); }
+.glass .rs-bar-neg { fill: url(#rs-glass-neg); }
+
+/* AI-stack layer rows: same glass fill as panels, but border-color is
+   left alone — the cyan open-state border and L-gutter carry the order */
+.glass .ai-stack-row {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.05) 100%),
+    rgba(12, 19, 38, 0.50) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  backdrop-filter: blur(22px) saturate(1.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 12px 32px rgba(3, 7, 18, 0.45);
+}
+
+/* RRG sidebar surfaces that scroll content beneath them (sticky header,
+   mobile overlay) — near-opaque so rows don't smear through */
+.glass .rrg-solid {
+  background: rgba(10, 16, 32, 0.90) !important;
+}
+
+/* Expanded company cells inherit the row's glass — the opaque surface
+   fill is a light/dark-only device; dividers alone carry the grid */
+.glass .ai-stack-co-cell {
+  background: transparent;
+}
+
+/* No backdrop-filter support → near-opaque fallback keeps text legible */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass .glass-panel:not(.glass-tint):not(.glass-still),
+  .glass .category-panel {
+    background: #0e1626 !important;
+  }
+  .glass {
+    --decision-green-bg: #101a2e;
+    --decision-amber-bg: #101a2e;
+    --decision-red-bg: #101a2e;
+    --alert-amber-bg: #101a2e;
+  }
+  .glass .hero-gauge::after {
+    background: rgba(255, 255, 255, 0.10);
+  }
+  .glass .breadth-shell,
+  .glass .glass-tooltip {
+    background: #0e1626 !important;
+  }
+  .glass .glass-chrome {
+    background: #0a101f !important;
+  }
+  .glass .nav-active-pill {
+    background: rgba(255, 255, 255, 0.18);
+  }
+  .glass button.seg-active {
+    background: rgba(255, 255, 255, 0.18) !important;
+  }
+  .glass .pill-toggle-slider {
+    background: rgba(255, 255, 255, 0.20) !important;
+  }
+  .glass .ai-stack-row {
+    background: #0e1626 !important;
+  }
+}
+
 /* Category panel base */
 .category-panel {
   background: var(--terminal-surface);
@@ -589,6 +1258,44 @@
 }
 .rrg-overdrive-btn.rrg-active .rrg-orbit-icon {
   animation: none;
+}
+
+/* Glass theme: the cyan electricity reads as a second material — the idle
+   RRG button becomes the same white lens as every other glass control.
+   !important beats the inline cyan background/color/border. */
+.glass .rrg-overdrive-btn.rrg-idle {
+  animation: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.06) 45%,
+    rgba(255, 255, 255, 0.12)
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  color: #f2f7ff !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: blur(10px) saturate(1.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.40),
+    0 0 14px rgba(255, 255, 255, 0.14);
+}
+.glass .rrg-overdrive-btn.rrg-idle:hover {
+  filter: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.50),
+    0 0 20px rgba(255, 255, 255, 0.28);
+}
+.glass .rrg-overdrive-btn.rrg-idle::after {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.28) 48%,
+    rgba(255, 255, 255, 0.70) 50%,
+    rgba(255, 255, 255, 0.28) 52%,
+    rgba(255, 255, 255, 0.04) 75%,
+    transparent 100%
+  );
 }
 
 /* Reduced motion — disable all overdrive animations */

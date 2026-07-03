@@ -3,7 +3,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useScrollHint } from "@/hooks/useScrollHint";
 import type { SheetsData, SheetsCell } from "@shared/schema";
 import { useTheme } from "@/hooks/useTheme";
-import { RefreshCw, Sun, Moon, Table, Brain, ChevronDown } from "lucide-react";
+import { RefreshCw, Table, Brain, ChevronDown } from "lucide-react";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { AppHeader } from "../components/AppHeader";
 
 const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
@@ -45,6 +46,15 @@ const THEME_COLORS = {
     lightRed: { bg: "#fef2f2", text: "#7f1d1d" },
     yellow: { bg: "#fef3c7", text: "#92400e" },
   },
+  /* Translucent tints so the glass shell (and wallpaper) reads through
+     the heatmap; text runs brighter to hold AA over the open fills */
+  glass: {
+    brightGreen: { bg: "rgba(0, 230, 118, 0.13)", text: "#7ff0b0" },
+    darkGreen: { bg: "rgba(0, 200, 100, 0.24)", text: "#66eda0" },
+    red: { bg: "rgba(255, 23, 68, 0.20)", text: "#ffb0bc" },
+    lightRed: { bg: "rgba(255, 23, 68, 0.10)", text: "#f4bcc4" },
+    yellow: { bg: "rgba(255, 171, 0, 0.14)", text: "#fde68a" },
+  },
 };
 
 function getNumVal(row: SheetsCell[], ci: number): number | null {
@@ -57,7 +67,7 @@ function computeCellColor(row: SheetsCell[], colIdx: number, theme: string): Cel
   const val = row[colIdx]?.value;
   if (val === null || val === undefined || typeof val === "string") return null;
   const v = val as number;
-  const c = theme === "dark" ? THEME_COLORS.dark : THEME_COLORS.light;
+  const c = theme === "glass" ? THEME_COLORS.glass : theme !== "light" ? THEME_COLORS.dark : THEME_COLORS.light;
 
   const up4 = getNumVal(row, COL.UP_4_TODAY);
   const down4 = getNumVal(row, COL.DOWN_4_TODAY);
@@ -854,6 +864,13 @@ const GROUP_COLORS: Record<string, Record<string, { bg: string; text: string }>>
     primary:   { bg: "#fef3c7", text: "#92400e" },
     secondary: { bg: "#d1fae5", text: "#065f46" },
   },
+  /* Group headers are sticky — dense-but-translucent base (Chromium
+     won't paint backdrop-filter on table cells, so density does the
+     legibility work); the tint floats on top */
+  glass: {
+    primary:   { bg: "linear-gradient(rgba(255, 171, 0, 0.14), rgba(255, 171, 0, 0.14)), rgba(15, 22, 42, 0.97)", text: "#fde68a" },
+    secondary: { bg: "linear-gradient(rgba(0, 230, 118, 0.13), rgba(0, 230, 118, 0.13)), rgba(15, 22, 42, 0.97)", text: "#7ff0b0" },
+  },
 };
 
 /* Regime-keyed verdict-bar tints (reuse the decision-panel token family) */
@@ -919,7 +936,7 @@ export default function GoogleSheets() {
   const [showAnalysis, setShowAnalysis] = useState(() => {
     try { return localStorage.getItem("breadth-analysis-open") === "true"; } catch { return false; }
   });
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   const toggleAnalysis = () => {
     setShowAnalysis(v => {
@@ -999,9 +1016,9 @@ export default function GoogleSheets() {
 
   const groupStyle = (label: string): React.CSSProperties => {
     const l = label.toLowerCase();
-    const palette = theme === "dark" ? GROUP_COLORS.dark : GROUP_COLORS.light;
-    if (l.includes("primary"))   return { backgroundColor: palette.primary.bg, color: palette.primary.text };
-    if (l.includes("secondary")) return { backgroundColor: palette.secondary.bg, color: palette.secondary.text };
+    const palette = theme === "glass" ? GROUP_COLORS.glass : theme !== "light" ? GROUP_COLORS.dark : GROUP_COLORS.light;
+    if (l.includes("primary"))   return { background: palette.primary.bg, color: palette.primary.text };
+    if (l.includes("secondary")) return { background: palette.secondary.bg, color: palette.secondary.text };
     return { background: "var(--terminal-bg)", color: "transparent" };
   };
 
@@ -1023,13 +1040,7 @@ export default function GoogleSheets() {
         updatedLabel={IS_STATIC && data?.lastUpdated ? `updated ${formatDataTimestamp(data.lastUpdated)}` : `updated ${secondsAgo}s ago`}
         actions={
           <>
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
+            <ThemeToggle />
             {!IS_STATIC && (
               <button onClick={handleRefresh} className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100">
                 <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
@@ -1050,7 +1061,7 @@ export default function GoogleSheets() {
           </div>
         ) : isError ? (
           <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center p-8 rounded-lg border" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
+            <div className="text-center p-8 rounded-lg border glass-panel" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
               <Table className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--text-faint)" }} />
               <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA LOAD ERROR</h2>
               <p className="text-sm mb-4 max-w-md" style={{ color: "var(--text-secondary)" }}>{(error as Error)?.message || "Failed to load data"}</p>
@@ -1076,7 +1087,7 @@ export default function GoogleSheets() {
           );
           return (
             <div
-              className="rounded-lg border mb-3 max-w-[1600px] mx-auto overflow-hidden"
+              className="rounded-lg border mb-3 max-w-[1600px] mx-auto overflow-hidden glass-panel"
               style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
             >
               {/* ── STATUS LINE — always visible, the decision in one dense strip ── */}
@@ -1116,8 +1127,8 @@ export default function GoogleSheets() {
                     className="ta-mini-meter relative w-[88px] h-1.5 rounded-full overflow-hidden flex flex-shrink-0"
                     style={{ background: "var(--bar-track)", boxShadow: "inset 0 1px 1.5px rgba(0,0,0,0.18)" }}
                   >
-                    <div className="ta-mini-up h-full" style={{ width: `${upPct}%`, background: "var(--terminal-green)" }} />
-                    <div className="ta-mini-down h-full" style={{ width: `${100 - upPct}%`, background: "var(--terminal-red)" }} />
+                    <div className="ta-mini-up glass-bar h-full" style={{ width: `${upPct}%`, background: "var(--terminal-green)", "--bar-color": "var(--terminal-green)", "--bar-span": upPct } as React.CSSProperties} />
+                    <div className="ta-mini-down glass-bar h-full" style={{ width: `${100 - upPct}%`, background: "var(--terminal-red)", "--bar-color": "var(--terminal-red)", "--bar-tip-x": "0%", "--bar-base": "right", "--bar-span": 100 - upPct } as React.CSSProperties} />
                     <span className="ta-mini-seam" style={{ left: `${upPct}%` }} />
                   </div>
                   <span className="text-[11px] font-bold" style={{ color: "var(--terminal-red)" }}>
@@ -1202,7 +1213,7 @@ export default function GoogleSheets() {
                               <span className="text-[10px] font-mono flex-shrink-0 mt-px" style={{ color: "var(--text-faint)" }}>▸</span>
                               <p className="text-[10px] leading-[1.45]" style={{ color: "var(--text-secondary)" }}>
                                 {evt.date && (
-                                  <span className="inline-block font-mono font-bold text-[9px] px-1 py-px rounded mr-1.5 align-middle" style={{ background: "var(--terminal-cyan)", color: "var(--terminal-bg)", opacity: 0.9 }}>{evt.date}</span>
+                                  <span className="evt-date-pill inline-block font-mono font-bold text-[9px] px-1 py-px rounded mr-1.5 align-middle" style={{ background: "var(--terminal-cyan)", color: "var(--terminal-bg)", opacity: 0.9 }}>{evt.date}</span>
                                 )}
                                 {evt.description}
                               </p>
@@ -1226,7 +1237,7 @@ export default function GoogleSheets() {
         })()}
 
         {data && data.rows.length > 0 ? (
-          <div className="rounded-lg border overflow-hidden max-w-[1600px] mx-auto" style={{ borderColor: "var(--terminal-border)" }}>
+          <div className="breadth-shell rounded-lg border overflow-hidden max-w-[1600px] mx-auto" style={{ borderColor: "var(--terminal-border)" }}>
             {/* overflow: auto on both axes in same container so sticky thead + sticky col-0 both work */}
             <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 220px)" }} ref={breadthTableRef}>
               <table className="text-sm border-collapse" style={{ minWidth: "100%" }}>

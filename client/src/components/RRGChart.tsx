@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import type { RRGTicker, Quadrant } from "@/lib/rrg";
 import { QUADRANT_META } from "@/lib/rrg";
 
@@ -175,7 +176,7 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
   return (
     <div
       ref={containerRef}
-      className="rounded-lg border overflow-hidden"
+      className="rounded-lg border overflow-hidden glass-panel"
       style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
     >
       {/* Title Bar */}
@@ -405,10 +406,12 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
             </g>
           </svg>
 
-          {/* ─── Tooltip ─── */}
-          {tooltip && (
+          {/* ─── Tooltip — portaled to body: the panel's backdrop-filter
+               would otherwise become the containing block for position:fixed
+               and break the viewport clientX/Y anchoring ─── */}
+          {tooltip && createPortal(
             <div
-              className="fixed z-50 pointer-events-none px-3 py-2 rounded-lg border text-[11px]"
+              className="glass-tooltip fixed z-50 pointer-events-none px-3 py-2 rounded-lg border text-[11px]"
               style={{
                 left: tooltip.x + 14,
                 top: tooltip.y - 12,
@@ -433,14 +436,15 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
                   </span>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body,
           )}
         </div>
 
         {/* ─── Right Sidebar ─── */}
         {sidebarOpen && (
         <div
-          className="flex-shrink-0 border-l overflow-y-auto"
+          className={`flex-shrink-0 border-l overflow-y-auto${sidebarAsOverlay ? " rrg-solid" : ""}`}
           style={{
             width: SIDEBAR_WIDTH,
             borderColor: "var(--terminal-border)",
@@ -459,7 +463,7 @@ export function RRGChart({ data, benchmark, lookback }: RRGChartProps) {
         >
           {/* Sidebar header */}
           <div
-            className="px-3 py-2 border-b sticky top-0 z-10"
+            className="rrg-solid px-3 py-2 border-b sticky top-0 z-10"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
             <div className="flex items-center justify-between">

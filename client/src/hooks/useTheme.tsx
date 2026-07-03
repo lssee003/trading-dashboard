@@ -1,7 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 
-type Theme = "light" | "dark";
+type Theme = "light" | "dark" | "glass";
+
+const THEME_CYCLE: Theme[] = ["light", "dark", "glass"];
+
+function isTheme(value: string | null): value is Theme {
+  return value === "light" || value === "dark" || value === "glass";
+}
 
 interface ThemeContextValue {
   theme: Theme;
@@ -22,6 +28,16 @@ function writePersisted(value: string) {
   persistedTheme = value;
 }
 
+/** Initial theme: in-memory persistence first, then an explicit
+    ?theme= URL override (deep-linking a theme; also lets headless
+    tooling reach the glass theme without UI interaction). */
+function readInitial(): string | null {
+  const persisted = readPersisted();
+  if (persisted !== null) return persisted;
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("theme");
+}
+
 /** Returns the auto theme based on the user's local time: dark 18:00–07:00, light 07:00–18:00 */
 function getAutoTheme(): Theme {
   const hour = new Date().getHours();
@@ -30,27 +46,22 @@ function getAutoTheme(): Theme {
 
 function applyThemeClass(theme: Theme) {
   const root = document.documentElement;
-  if (theme === "dark") {
-    root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
-  }
+  // Glass layers on top of the dark variables, so it applies both classes
+  root.classList.toggle("dark", theme !== "light");
+  root.classList.toggle("glass", theme === "glass");
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [manuallySet, setManuallySet] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
-    const persisted = readPersisted();
-    if (persisted === "light" || persisted === "dark") {
-      return persisted;
+    const initial = readInitial();
+    if (isTheme(initial)) {
+      return initial;
     }
     return getAutoTheme();
   });
 
-  const [hadPersisted] = useState(() => {
-    const p = readPersisted();
-    return p === "light" || p === "dark";
-  });
+  const [hadPersisted] = useState(() => isTheme(readInitial()));
 
   const themeRef = useRef(theme);
   themeRef.current = theme;
@@ -71,7 +82,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = useCallback(() => {
     setManuallySet(true);
 
-    const next = themeRef.current === "dark" ? "light" : "dark";
+    const cycle = THEME_CYCLE;
+    const next = cycle[(cycle.indexOf(themeRef.current) + 1) % cycle.length];
 
     // Use View Transitions API for a smooth cross-fade morph between themes.
     // Falls back to instant swap if unsupported (Firefox) or reduced motion.

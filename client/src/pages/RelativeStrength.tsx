@@ -6,13 +6,13 @@ import { RSHistogram } from "../components/RSHistogram";
 import { RRGChart } from "../components/RRGChart";
 import { computeRRGData } from "@/lib/rrg";
 import { useViewTransitionNavigate } from "@/lib/viewTransition";
-import { useTheme } from "@/hooks/useTheme";
 import {
-  RefreshCw, Search, Sun, Moon, X, Plus, Download,
+  RefreshCw, Search, X, Plus, Download,
   ArrowUpDown, TrendingUp, TrendingDown, BarChart3, Activity, Table, Orbit,
   ArrowUpRight, ChevronDown,
 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
+import { ThemeToggle } from "../components/ThemeToggle";
 import {
   LOOKBACK_OPTIONS,
   BENCHMARK_OPTIONS,
@@ -51,7 +51,6 @@ const RS_PULSE_TOOLTIP = "RS Pulse shows where today's RS ranks within the selec
 
 export default function RelativeStrength() {
   const rsTableRef = useScrollHint<HTMLDivElement>();
-  const { theme, toggleTheme } = useTheme();
   const navigateWithTransition = useViewTransitionNavigate();
 
   // Controls
@@ -266,14 +265,14 @@ export default function RelativeStrength() {
   if (isError) {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ background: "var(--terminal-bg)" }}>
-        <div className="text-center p-8 rounded-lg border" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
+        <div className="text-center p-8 rounded-lg border glass-panel" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
           <Activity className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--text-faint)" }} />
           <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA FEED ERROR</h2>
           <p className="text-sm mb-4 max-w-md" style={{ color: "var(--text-secondary)" }}>{(error as Error)?.message || "Failed to load RS data"}</p>
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 rounded text-sm font-medium transition-colors"
-            style={{ background: "var(--terminal-blue)", color: "#fff" }}
+            className="seg-active px-4 py-2 rounded text-sm font-medium transition-colors"
+            style={{ background: "var(--terminal-blue)", color: "#fff", border: "1px solid transparent" }}
             data-testid="button-retry"
           >
             Retry
@@ -301,14 +300,7 @@ export default function RelativeStrength() {
         }
         actions={
           <>
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
-              data-testid="button-theme-toggle"
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
+            <ThemeToggle />
             <button
               onClick={() => refetch()}
               className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
@@ -326,7 +318,7 @@ export default function RelativeStrength() {
 
           {/* ─── Controls Row ─── */}
           <div
-            className="rounded-lg border p-3"
+            className="rounded-lg border p-3 glass-panel"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
             <div className="flex flex-wrap items-center gap-3">
@@ -337,7 +329,7 @@ export default function RelativeStrength() {
                   {/* Table button */}
                   <button
                     onClick={() => setViewMode("table")}
-                    className="px-2 py-1 text-[11px] font-medium transition-all flex items-center gap-1 rounded"
+                    className={`px-2 py-1 text-[11px] font-medium transition-all flex items-center gap-1 rounded${viewMode === "table" ? " seg-active" : ""}`}
                     style={{
                       background: viewMode === "table" ? "var(--terminal-blue)" : "transparent",
                       color: viewMode === "table" ? "#fff" : "var(--terminal-dim)",
@@ -355,7 +347,7 @@ export default function RelativeStrength() {
                       ref={rrgBtnRef}
                       onClick={() => { setViewMode("rrg"); setBenchmark("SPY"); setLookback(10); setCategoryFilter("Sector"); }}
                       title="View Relative Rotation Graph"
-                      className={`rrg-overdrive-btn px-2.5 py-1 text-[11px] font-bold flex items-center gap-1.5 rounded relative overflow-hidden${viewMode === "table" ? " rrg-idle" : " rrg-active"}`}
+                      className={`rrg-overdrive-btn px-2.5 py-1 text-[11px] font-bold flex items-center gap-1.5 rounded relative overflow-hidden${viewMode === "table" ? " rrg-idle" : " rrg-active seg-active"}`}
                       style={{
                         background: viewMode === "rrg" ? "#0ea5e9" : "rgba(14, 165, 233, 0.08)",
                         color: viewMode === "rrg" ? "#fff" : "#38bdf8",
@@ -375,7 +367,7 @@ export default function RelativeStrength() {
               {/* Mobile: collapsed Bench/Window/Filter trigger */}
               <button
                 onClick={() => setMobileFiltersOpen((v) => !v)}
-                className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                className={`md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors${mobileFiltersOpen ? " seg-active" : ""}`}
                 style={{
                   background: mobileFiltersOpen ? "var(--terminal-blue)" : "transparent",
                   color: mobileFiltersOpen ? "#fff" : "var(--text-primary)",
@@ -411,7 +403,7 @@ export default function RelativeStrength() {
                     <button
                       key={opt.value}
                       onClick={() => setBenchmark(opt.value)}
-                      className="px-2 py-1 text-[11px] font-medium transition-all"
+                      className={`px-2 py-1 text-[11px] font-medium transition-all${benchmark === opt.value ? " seg-active" : ""}`}
                       style={{
                         background: benchmark === opt.value ? "var(--terminal-blue)" : "transparent",
                         color: benchmark === opt.value ? "#fff" : "var(--terminal-dim)",
@@ -432,7 +424,7 @@ export default function RelativeStrength() {
                     <button
                       key={opt.value}
                       onClick={() => setLookback(opt.value)}
-                      className="px-2 py-1 text-[11px] font-medium transition-all"
+                      className={`px-2 py-1 text-[11px] font-medium transition-all${lookback === opt.value ? " seg-active" : ""}`}
                       style={{
                         background: lookback === opt.value ? "var(--terminal-blue)" : "transparent",
                         color: lookback === opt.value ? "#fff" : "var(--terminal-dim)",
@@ -453,7 +445,7 @@ export default function RelativeStrength() {
                     <button
                       key={cat}
                       onClick={() => setCategoryFilter(cat)}
-                      className="px-2 py-1 text-[11px] font-medium transition-all"
+                      className={`px-2 py-1 text-[11px] font-medium transition-all${categoryFilter === cat ? " seg-active" : ""}`}
                       style={{
                         background: categoryFilter === cat ? "var(--terminal-blue)" : "transparent",
                         color: categoryFilter === cat ? "#fff" : "var(--terminal-dim)",
@@ -521,7 +513,7 @@ export default function RelativeStrength() {
                 <button
                   onClick={handleAddTicker}
                   disabled={IS_STATIC}
-                  className="px-2 py-1 rounded text-[11px] font-medium transition-colors"
+                  className="seg-active px-2 py-1 rounded text-[11px] font-medium transition-colors"
                   style={{
                     background: "var(--terminal-blue)",
                     color: "#fff",
@@ -590,7 +582,7 @@ export default function RelativeStrength() {
                       <button
                         key={opt.value}
                         onClick={() => setBenchmark(opt.value)}
-                        className="flex-1 px-2 py-2 text-[11px] font-medium transition-all"
+                        className={`flex-1 px-2 py-2 text-[11px] font-medium transition-all${benchmark === opt.value ? " seg-active" : ""}`}
                         style={{
                           background: benchmark === opt.value ? "var(--terminal-blue)" : "transparent",
                           color: benchmark === opt.value ? "#fff" : "var(--terminal-dim)",
@@ -609,7 +601,7 @@ export default function RelativeStrength() {
                       <button
                         key={opt.value}
                         onClick={() => setLookback(opt.value)}
-                        className="flex-1 px-2 py-2 text-[11px] font-medium transition-all"
+                        className={`flex-1 px-2 py-2 text-[11px] font-medium transition-all${lookback === opt.value ? " seg-active" : ""}`}
                         style={{
                           background: lookback === opt.value ? "var(--terminal-blue)" : "transparent",
                           color: lookback === opt.value ? "#fff" : "var(--terminal-dim)",
@@ -628,7 +620,7 @@ export default function RelativeStrength() {
                       <button
                         key={cat}
                         onClick={() => setCategoryFilter(cat)}
-                        className="flex-1 px-1.5 py-2 text-[11px] font-medium transition-all"
+                        className={`flex-1 px-1.5 py-2 text-[11px] font-medium transition-all${categoryFilter === cat ? " seg-active" : ""}`}
                         style={{
                           background: categoryFilter === cat ? "var(--terminal-blue)" : "transparent",
                           color: categoryFilter === cat ? "#fff" : "var(--terminal-dim)",
@@ -672,7 +664,7 @@ export default function RelativeStrength() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Leaders */}
               <div
-                className="rounded-lg border p-3"
+                className="rounded-lg border p-3 glass-panel"
                 style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -708,7 +700,7 @@ export default function RelativeStrength() {
 
               {/* Laggards */}
               <div
-                className="rounded-lg border p-3"
+                className="rounded-lg border p-3 glass-panel"
                 style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -765,7 +757,7 @@ export default function RelativeStrength() {
             <RRGChart data={rrgData} benchmark={benchmark} lookback={lookback} />
           ) : (
           <div
-            className="rounded-lg border overflow-hidden"
+            className="rounded-lg border overflow-hidden glass-panel"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
             {isLoading ? (

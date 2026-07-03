@@ -46,7 +46,7 @@ export function Tooltip({ text, title, children }: TooltipProps) {
       {visible && createPortal(
         <span
           ref={tipRef}
-          className="fixed z-[9999] rounded-md text-left pointer-events-none"
+          className="glass-tooltip fixed z-[9999] rounded-md text-left pointer-events-none"
           style={{
             top: pos.top - 10,
             left: pos.left,

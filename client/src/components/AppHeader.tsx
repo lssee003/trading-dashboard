@@ -24,28 +24,61 @@ interface AppHeaderProps {
   actions: React.ReactNode;
 }
 
+/* The header remounts on every page navigation (each page renders its own
+   AppHeader), so the previous pill position must outlive the component for
+   the glide to have somewhere to start from. */
+let lastPillRect: { x: number; w: number; h: number } | null = null;
+
 export function AppHeader({ activePage, statusContent, updatedLabel, actions }: AppHeaderProps) {
   const [navOpen, setNavOpen] = useState(false);
   const active = NAV_ITEMS.find((n) => n.id === activePage)!;
   const tabsRef = useRef<HTMLDivElement>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
   const [sliderStyle, setSliderStyle] = useState<React.CSSProperties>({ opacity: 0 });
 
   useLayoutEffect(() => {
     const container = tabsRef.current;
     if (!container) return;
     const activeEl = container.querySelector(`[data-tab-id="${activePage}"]`) as HTMLElement;
-    if (!activeEl) return;
+    /* offsetWidth 0 = tabs are display:none (mobile) — keep the stored
+       desktop position instead of clobbering it with zeros */
+    if (!activeEl || activeEl.offsetWidth === 0) return;
+
+    const next = { x: activeEl.offsetLeft, w: activeEl.offsetWidth, h: activeEl.offsetHeight };
+    const prev = lastPillRect;
+    lastPillRect = next;
+
     setSliderStyle({
-      transform: `translateX(${activeEl.offsetLeft}px)`,
-      width: activeEl.offsetWidth,
-      height: activeEl.offsetHeight,
+      transform: `translateX(${next.x}px)`,
+      width: next.w,
+      height: next.h,
       opacity: 1,
     });
+
+    const slider = sliderRef.current;
+    const moved = prev && (prev.x !== next.x || prev.w !== next.w);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!slider || !prev || !moved || reduceMotion || typeof slider.animate !== "function") return;
+
+    /* Shrink, glide, expand: the pill compresses toward its center while
+       traveling, then relaxes into the destination tab */
+    const cPrev = prev.x + prev.w / 2;
+    const cNext = next.x + next.w / 2;
+    const midW = Math.min(prev.w, next.w) * 0.72;
+    const midX = (cPrev + cNext) / 2 - midW / 2;
+    slider.animate(
+      [
+        { transform: `translateX(${prev.x}px) scaleY(1)`, width: `${prev.w}px`, easing: "cubic-bezier(0.5, 0, 0.7, 0.4)" },
+        { transform: `translateX(${midX}px) scaleY(0.76)`, width: `${midW}px`, offset: 0.42, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+        { transform: `translateX(${next.x}px) scaleY(1)`, width: `${next.w}px` },
+      ],
+      { duration: 460 },
+    );
   }, [activePage]);
 
   return (
     <header
-      className="flex-shrink-0 border-b scan-line-sweep"
+      className="flex-shrink-0 border-b scan-line-sweep glass-chrome"
       style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}
     >
       {/* ── Main bar ── */}
@@ -63,8 +96,8 @@ export function AppHeader({ activePage, statusContent, updatedLabel, actions }: 
 
           {/* Mobile: current-page button */}
           <button
-            className="sm:hidden flex items-center gap-1.5 px-3 py-1 rounded font-bold tracking-wide text-xs"
-            style={{ background: "var(--terminal-blue)", color: "#fff" }}
+            className="nav-active-pill sm:hidden flex items-center gap-1.5 px-3 py-1 rounded font-bold tracking-wide text-xs"
+            style={{ color: "#fff" }}
             onClick={() => setNavOpen((v) => !v)}
           >
             {active.icon}
@@ -80,14 +113,13 @@ export function AppHeader({ activePage, statusContent, updatedLabel, actions }: 
 
           {/* Desktop: inline tabs with sliding indicator */}
           <div ref={tabsRef} className="hidden sm:flex items-center gap-2 sm:gap-4 overflow-x-auto flex-1 min-w-0 relative" style={{ scrollbarWidth: "none" }}>
-            {/* Sliding indicator */}
+            {/* Sliding indicator — glide handled by WAAPI in the effect above */}
             <div
-              className="absolute top-0 left-0 rounded pointer-events-none"
+              ref={sliderRef}
+              className="nav-active-pill absolute top-0 left-0 rounded pointer-events-none"
               style={{
-                background: "var(--terminal-blue)",
-                boxShadow: "0 0 12px color-mix(in srgb, var(--terminal-blue) 40%, transparent), 0 0 4px color-mix(in srgb, var(--terminal-blue) 20%, transparent)",
                 ...sliderStyle,
-                transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease",
+                transition: "opacity 0.3s ease",
               }}
             />
             {NAV_ITEMS.map((item) => {
@@ -151,9 +183,8 @@ export function AppHeader({ activePage, statusContent, updatedLabel, actions }: 
           return isActive ? (
             <div
               key={item.id}
-              className="flex items-center gap-2 px-4 py-3 font-bold tracking-wide text-xs"
+              className="nav-active-pill flex items-center gap-2 px-4 py-3 font-bold tracking-wide text-xs"
               style={{
-                background: "var(--terminal-blue)",
                 color: "#fff",
                 borderTop: i > 0 ? "1px solid rgba(255,255,255,0.1)" : undefined,
               }}

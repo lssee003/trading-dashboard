@@ -14,7 +14,7 @@ function getScoreColor(score: number): string {
 export function ScoreBreakdown({ categories, totalScore }: ScoreBreakdownProps) {
   return (
     <div
-      className="rounded-lg p-4 border h-full"
+      className="rounded-lg p-4 border h-full glass-panel"
       style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
       data-testid="score-breakdown"
     >
@@ -43,11 +43,13 @@ export function ScoreBreakdown({ categories, totalScore }: ScoreBreakdownProps) 
               </div>
               <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bar-track)" }}>
                 <div
-                  className="h-full rounded-full transition-all duration-700"
+                  className="glass-bar h-full rounded-full transition-all duration-700"
                   style={{
                     width: `${fillPct}%`,
                     background: getScoreColor(cat.score),
-                  }}
+                    "--bar-color": getScoreColor(cat.score),
+                    "--bar-span": fillPct,
+                  } as React.CSSProperties}
                 />
               </div>
             </div>

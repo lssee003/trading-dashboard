@@ -20,7 +20,7 @@ export function SectorHeatmap({ sectors }: SectorHeatmapProps) {
 
   return (
     <div
-      className="rounded-lg p-4 border h-full"
+      className="rounded-lg p-4 border h-full glass-panel"
       style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
       data-testid="sector-heatmap"
     >
@@ -61,19 +61,23 @@ export function SectorHeatmap({ sectors }: SectorHeatmapProps) {
               {/* Bar */}
               <div className="flex-1 relative h-5 rounded overflow-hidden" style={{ background: "var(--sector-bar-bg)" }}>
                 <div
-                  className="absolute top-0 h-full rounded transition-all duration-500"
+                  className="glass-bar absolute top-0 h-full rounded transition-all duration-500"
                   style={{
                     width: `${Math.max(barWidth, 2)}%`,
                     background: getBarColor(sector.changePercent),
+                    "--bar-color": getBarColor(sector.changePercent),
+                    "--bar-tip-x": isPositive ? "100%" : "0%",
+                    "--bar-base": isPositive ? "left" : "right",
+                    "--bar-span": Math.max(barWidth, 2),
                     left: isPositive ? "0" : undefined,
                     right: !isPositive ? "0" : undefined,
                     opacity: 0.6,
-                  }}
+                  } as React.CSSProperties}
                 />
                 <div className="absolute inset-0 flex items-center px-2 justify-between">
                   <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{sector.name}</span>
                   <span
-                    className="font-bold text-xs"
+                    className="sector-value font-bold text-xs"
                     style={{ color: getBarColor(sector.changePercent) }}
                   >
                     {sector.changePercent > 0 ? "+" : ""}{sector.changePercent.toFixed(2)}%

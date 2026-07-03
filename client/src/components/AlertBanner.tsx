@@ -9,15 +9,24 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
 
   return (
     <div
-      className="px-4 py-2 flex items-center gap-3 text-xs"
+      className="relative overflow-hidden px-4 py-2 flex items-center gap-3 text-xs glass-panel glass-tint"
       style={{
         background: "var(--alert-amber-bg)",
         borderBottom: "1px solid var(--alert-amber-border)",
       }}
       data-testid="alert-banner"
     >
-      <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--terminal-amber)" }} />
-      <div className="flex items-center gap-4">
+      {/* Amber light field (glass only) — same construction as the hero */}
+      <div
+        className="hero-lights"
+        aria-hidden="true"
+        style={{ "--blob-color": "var(--terminal-amber)" } as React.CSSProperties}
+      >
+        <span className="hero-blob hero-blob-a" />
+        <span className="hero-blob hero-blob-b" />
+      </div>
+      <AlertTriangle className="relative z-10 w-4 h-4 flex-shrink-0" style={{ color: "var(--terminal-amber)" }} />
+      <div className="relative z-10 flex items-center gap-4">
         {alerts.map((alert, idx) => (
           <span key={idx} className="font-medium" style={{ color: "var(--terminal-amber)" }}>
             ⚠ {alert}

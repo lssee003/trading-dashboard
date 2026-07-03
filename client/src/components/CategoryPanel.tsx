@@ -146,7 +146,7 @@ function PillToggle<T extends string>({
       style={{ border: "1px solid var(--terminal-border)" }}
     >
       <div
-        className="absolute top-0 left-0 rounded"
+        className="pill-toggle-slider absolute top-0 left-0 rounded"
         style={{
           background: "var(--terminal-surface-2)",
           ...sliderStyle,
@@ -377,8 +377,8 @@ export function CategoryPanel({ category, burst, momentum20d, breadthToggle }: C
       {/* Score bar */}
       <div className="h-1 rounded-full mb-2" style={{ background: "var(--bar-track)" }}>
         <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${category.score}%`, background: scoreColor }}
+          className="glass-bar h-full rounded-full transition-all duration-700"
+          style={{ width: `${category.score}%`, background: scoreColor, "--bar-color": scoreColor, "--bar-span": category.score } as React.CSSProperties}
         />
       </div>
 

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { TickerBar } from "@/components/TickerBar";
+import { GlassBackdrop } from "@/components/GlassBackdrop";
 import type { DashboardData } from "@shared/schema";
 import Dashboard from "@/pages/Dashboard";
 import RelativeStrength from "@/pages/RelativeStrength";
@@ -45,8 +46,26 @@ function App() {
           <Toaster />
           <Router hook={useHashLocation}>
             <div className="min-h-screen flex flex-col" style={{ background: "var(--terminal-bg)" }}>
+              {/* Procedural liquid-glass scene behind everything (glass theme only) */}
+              <GlassBackdrop />
+              {/* Shared SVG paint servers for the glass-theme RS histogram bars:
+                  pale at the baseline, saturated signal color at the tip */}
+              <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="rs-glass-pos" x1="0" y1="1" x2="0" y2="0">
+                    <stop offset="0" style={{ stopColor: "color-mix(in srgb, var(--terminal-green) 40%, #ffffff)", stopOpacity: 0.55 }} />
+                    <stop offset="0.55" style={{ stopColor: "var(--terminal-green)", stopOpacity: 0.8 }} />
+                    <stop offset="1" style={{ stopColor: "var(--terminal-green)", stopOpacity: 1 }} />
+                  </linearGradient>
+                  <linearGradient id="rs-glass-neg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" style={{ stopColor: "color-mix(in srgb, var(--terminal-red) 40%, #ffffff)", stopOpacity: 0.55 }} />
+                    <stop offset="0.55" style={{ stopColor: "var(--terminal-red)", stopOpacity: 0.8 }} />
+                    <stop offset="1" style={{ stopColor: "var(--terminal-red)", stopOpacity: 1 }} />
+                  </linearGradient>
+                </defs>
+              </svg>
               {/* Sticky ticker bar across all pages */}
-              <div className="flex-shrink-0 sticky top-0 z-50" style={{ background: "var(--terminal-surface)" }}>
+              <div className="flex-shrink-0 sticky top-0 z-50 glass-chrome" style={{ background: "var(--terminal-surface)" }}>
                 <GlobalTickerBar />
               </div>
               {/* Page content */}

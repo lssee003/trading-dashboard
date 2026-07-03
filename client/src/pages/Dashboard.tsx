@@ -8,16 +8,15 @@ import { ScoreBreakdown } from "../components/ScoreBreakdown";
 import { AlertBanner } from "../components/AlertBanner";
 import { AnalysisPanel } from "../components/AnalysisPanel";
 import { DashboardSkeleton } from "../components/DashboardSkeleton";
-import { RefreshCw, Activity, Sun, Moon } from "lucide-react";
-import { useTheme } from "@/hooks/useTheme";
+import { RefreshCw, Activity } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
 
 export default function Dashboard() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);
-  const { theme, toggleTheme } = useTheme();
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
@@ -67,7 +66,7 @@ export default function Dashboard() {
   if (isError) {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ background: "var(--terminal-bg)" }}>
-        <div className="text-center p-8 rounded-lg border" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
+        <div className="text-center p-8 rounded-lg border glass-panel" style={{ borderColor: "var(--terminal-border)", background: "var(--terminal-surface)" }}>
           <Activity className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
           <h2 className="text-lg font-bold mb-2" style={{ color: "var(--terminal-amber)" }}>DATA FEED ERROR</h2>
           <p className="text-sm mb-4 max-w-md" style={{ color: 'var(--text-secondary)' }}>{(error as Error)?.message || "Failed to connect to market data feed"}</p>
@@ -104,14 +103,7 @@ export default function Dashboard() {
         updatedLabel={IS_STATIC && data?.lastUpdated ? `updated ${formatDataTimestamp(data.lastUpdated)}` : `updated ${secondsAgo}s ago`}
         actions={
           <>
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
-              data-testid="button-theme-toggle"
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
+            <ThemeToggle />
             {!IS_STATIC && (
               <button
                 onClick={handleRefresh}

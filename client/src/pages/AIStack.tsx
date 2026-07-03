@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  RefreshCw, Sun, Moon, ChevronDown, Layers, Search, X, ArrowLeft,
+  RefreshCw, ChevronDown, Layers, Search, X, ArrowLeft,
 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
-import { useTheme } from "@/hooks/useTheme";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { useViewTransitionNavigate } from "@/lib/viewTransition";
 import { AI_STACK_DATA } from "@/data/aiStack";
 
@@ -25,7 +25,6 @@ function parseRole(role: string): { text: string; alsoLayers: string[] } {
 }
 
 export default function AIStack() {
-  const { theme, toggleTheme } = useTheme();
   const navigateWithTransition = useViewTransitionNavigate();
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
@@ -135,14 +134,7 @@ export default function AIStack() {
         }
         actions={
           <>
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              data-testid="button-theme-toggle"
-            >
-              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
+            <ThemeToggle />
             <button
               onClick={() => window.location.reload()}
               className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
@@ -161,7 +153,7 @@ export default function AIStack() {
 
           {/* ─── Page intro ─── */}
           <div
-            className="rounded-lg border p-4"
+            className="rounded-lg border p-4 glass-panel"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
             <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -223,7 +215,7 @@ export default function AIStack() {
 
           {/* ─── Controls ─── */}
           <div
-            className="rounded-lg border p-3 flex flex-wrap items-center gap-3"
+            className="rounded-lg border p-3 flex flex-wrap items-center gap-3 glass-panel"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
             {/* Search */}
@@ -312,7 +304,7 @@ export default function AIStack() {
           <div className="space-y-1.5">
             {filteredData.length === 0 ? (
               <div
-                className="rounded-lg border p-8 text-center"
+                className="rounded-lg border p-8 text-center glass-panel"
                 style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
               >
                 <Search className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-faint)" }} />
@@ -327,7 +319,7 @@ export default function AIStack() {
                 return (
                   <div
                     key={`${layer.layer}-${origIdx}`}
-                    className="rounded-md overflow-hidden border"
+                    className="ai-stack-row rounded-md overflow-hidden border"
                     style={{
                       background: open ? "var(--overlay-subtle)" : "var(--terminal-surface)",
                       borderColor: open ? "var(--terminal-cyan)" : "var(--terminal-border)",

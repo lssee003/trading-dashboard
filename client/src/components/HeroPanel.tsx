@@ -172,7 +172,14 @@ function CircularScore({ score, color, size = 90 }: { score: number; color: stri
   }, [size, radius]);
 
   return (
-    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="hero-gauge relative flex-shrink-0"
+      style={{ width: size, height: size, "--gauge-color": color } as React.CSSProperties}
+    >
+      <div className="hero-gauge-lights" aria-hidden="true">
+        <span className="hero-blob hero-gauge-blob-a" />
+        <span className="hero-blob hero-gauge-blob-b" />
+      </div>
       <svg viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
         <defs>
           <filter id="arc-glow" x="-30%" y="-30%" width="160%" height="160%">
@@ -197,8 +204,8 @@ function CircularScore({ score, color, size = 90 }: { score: number; color: stri
         style={{ width: size, height: size }}
       />
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-black leading-none" style={{ color }}>{animatedScore}</span>
-        <span className="text-[8px]" style={{ color: "var(--text-faint)" }}>/ 100</span>
+        <span className="hero-score-num text-xl font-black leading-none" style={{ color }}>{animatedScore}</span>
+        <span className="hero-score-den text-[8px]" style={{ color: "var(--text-faint)" }}>/ 100</span>
       </div>
     </div>
   );
@@ -212,11 +219,11 @@ export function HeroPanel({ decision, marketQualityScore, stance }: HeroPanelPro
 
   return (
     <div
-      className="rounded-lg border p-4 h-full flex items-center relative overflow-hidden"
+      className="rounded-lg border p-4 h-full flex items-center relative overflow-hidden glass-panel glass-tint"
       style={{ background: config.bg, borderColor: config.border }}
       data-testid="hero-panel"
     >
-      {/* Heatmap glow centered on the score gauge */}
+      {/* Heatmap glow centered on the score gauge (light/dark only) */}
       <div
         className="absolute inset-0 pointer-events-none hero-glow"
         style={{
@@ -224,13 +231,25 @@ export function HeroPanel({ decision, marketQualityScore, stance }: HeroPanelPro
         }}
       />
 
+      {/* Verdict light field (glass only): the hue drifts as blurred
+          plus-lighter blobs inside the neutral glass slab */}
+      <div
+        className="hero-lights"
+        aria-hidden="true"
+        style={{ "--blob-color": config.color } as React.CSSProperties}
+      >
+        <span className="hero-blob hero-blob-a" />
+        <span className="hero-blob hero-blob-b" />
+        <span className="hero-blob hero-blob-c" />
+      </div>
+
       <div className="flex items-center gap-4 w-full relative z-10">
         <div className="flex-1">
           <p className="text-[10px] font-medium tracking-widest uppercase mb-1" style={{ color: "var(--text-muted)" }}>
             Should I Be Trading?
           </p>
           <span
-            className="text-3xl md:text-4xl font-black tracking-tight leading-none block"
+            className="hero-verdict text-3xl md:text-4xl font-black tracking-tight leading-none block"
             style={{ color: config.color }}
             data-testid="decision-badge"
           >

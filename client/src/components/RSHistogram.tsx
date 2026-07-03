@@ -64,11 +64,12 @@ export function RSHistogram({ data, width = 120, height = 28 }: RSHistogramProps
       {bars.map((bar, i) => (
         <rect
           key={i}
+          className={bar.positive ? "rs-bar rs-bar-pos" : "rs-bar rs-bar-neg"}
           x={bar.x}
           y={bar.y}
           width={bar.w}
           height={bar.h}
-          rx={0.5}
+          rx={Math.min(bar.w / 2, 1.5)}
           fill={bar.positive ? "var(--terminal-green)" : "var(--terminal-red)"}
           opacity={0.75 + 0.25 * (i / bars.length)}
         />

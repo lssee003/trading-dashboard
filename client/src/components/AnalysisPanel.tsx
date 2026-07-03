@@ -23,7 +23,7 @@ export function AnalysisPanel({ summary, dataSource, terminalAnalysis }: Analysi
   if (!terminalAnalysis) {
     return (
       <div
-        className="rounded-lg p-4 border h-full flex flex-col"
+        className="rounded-lg p-4 border h-full flex flex-col glass-panel"
         style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
         data-testid="analysis-panel"
       >
@@ -46,7 +46,7 @@ export function AnalysisPanel({ summary, dataSource, terminalAnalysis }: Analysi
 
   return (
     <div
-      className="rounded-lg p-3 border h-full flex flex-col"
+      className="rounded-lg p-3 border h-full flex flex-col glass-panel"
       style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
       data-testid="analysis-panel"
     >
