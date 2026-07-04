@@ -915,40 +915,45 @@
    the signal color set inline by the component; --bar-dir points the
    gradient at the bar's tip (90deg = grows rightward, 270deg = leftward). */
 .glass .glass-bar {
-  /* Built from the iOS 26 Figma spec: the bar is a ~1%-alpha glass pill
-     (backdrop blur does the frosting), the rim is white inset highlights,
-     and ALL color comes from two blurred light fields fixed to the CHART,
-     not the bar — a brighter one at the track's max end and a softer,
-     indigo-deepened one at the base, together covering the full track
-     (the Figma's overlapping blue/purple 100px-blur ellipses). Both are
-     background-sized to the track via --bar-span (the bar's value, 0–100)
-     so each bar clips its slice of the shared field: every bar is
-     luminous along its whole length, taller bars reach into the brighter
-     region. --bar-tip-x / --bar-base flip for right-anchored bars. */
+  /* iOS 26 liquid-glass bar: a frosted, near-transparent pill (the 3px
+     backdrop blur does the frosting) over a faint white sheen, ringed by
+     a crisp white inset rim, with ALL color from two SAME-HUE light fields
+     fixed to the CHART — a bright field at the track's max end and a soft
+     one at the base, together covering the full track (the Figma's
+     overlapping blur ellipses). Both are background-sized to the track via
+     --bar-span (the bar's value, 0–100) so each bar clips its slice of the
+     shared field: luminous along its whole length, brighter toward the tip.
+     Both fields share the bar's own hue (no indigo mix) so the signal color
+     stays clean — greens read green, reds read red, no muddy base.
+     --bar-tip-x / --bar-base flip for right-anchored bars. */
   background:
     radial-gradient(
-      75% 300% at var(--bar-tip-x, 100%) 42%,
-      color-mix(in srgb, var(--bar-color, #94a3b8) 60%, transparent) 0%,
-      color-mix(in srgb, var(--bar-color, #94a3b8) 30%, transparent) 52%,
+      78% 300% at var(--bar-tip-x, 100%) 44%,
+      color-mix(in srgb, var(--bar-color, #94a3b8) 78%, transparent) 0%,
+      color-mix(in srgb, var(--bar-color, #94a3b8) 44%, transparent) 52%,
       transparent 88%
     ),
     radial-gradient(
-      72% 280% at calc(100% - var(--bar-tip-x, 100%)) 64%,
-      color-mix(in srgb, color-mix(in srgb, var(--bar-color, #94a3b8) 72%, #1e1b4b) 42%, transparent) 0%,
-      color-mix(in srgb, color-mix(in srgb, var(--bar-color, #94a3b8) 72%, #1e1b4b) 18%, transparent) 58%,
+      72% 280% at calc(100% - var(--bar-tip-x, 100%)) 60%,
+      color-mix(in srgb, var(--bar-color, #94a3b8) 34%, transparent) 0%,
+      color-mix(in srgb, var(--bar-color, #94a3b8) 15%, transparent) 60%,
       transparent 92%
     ),
-    rgba(255, 255, 255, 0.02) !important;
+    linear-gradient(rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.025)) !important;
   background-size:
     calc(10000% / max(var(--bar-span, 100), 1)) 100%,
     calc(10000% / max(var(--bar-span, 100), 1)) 100%,
     100% 100% !important;
   background-position: var(--bar-base, left) center, var(--bar-base, left) center, 0 0 !important;
   background-repeat: no-repeat !important;
+  /* Crisp specular rim (Figma Frame 6): bright top-left edge, doubled
+     bottom-right highlight, and a restrained inner glow so the frost reads
+     without washing thin bars into a solid gloss. */
   box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.40),
-    inset -1px -1px 1px rgba(255, 255, 255, 0.25),
-    inset 0 0 4px rgba(255, 255, 255, 0.60);
+    inset 1px 1px 1px rgba(255, 255, 255, 0.45),
+    inset -1px -1px 1px rgba(255, 255, 255, 0.28),
+    inset -1px -1px 1px rgba(255, 255, 255, 0.42),
+    inset 0 0 3px rgba(255, 255, 255, 0.32);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   border-radius: 9999px;
@@ -969,9 +974,18 @@
 .glass div:has(> .glass-bar) {
   border-radius: 9999px;
   background:
-    linear-gradient(rgba(148, 163, 184, 0.13), rgba(148, 163, 184, 0.13)),
-    rgba(8, 13, 26, 0.60) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    linear-gradient(rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)),
+    rgba(5, 9, 20, 0.82) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+/* The Scoring Breakdown bars are 8px (h-2) — too shallow for the glass
+   rim and frost to read; they collapse into a glossy line. In glass only,
+   give them the room the material needs (light/dark keep their 8px). */
+.glass div.h-2:has(> .glass-bar) {
+  height: 12px;
 }
 
 /* Signal-colored values that sit on top of the milky bar body need a dark
