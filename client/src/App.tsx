@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { TickerBar } from "@/components/TickerBar";
 import { GlassBackdrop } from "@/components/GlassBackdrop";
 import { GlassCursor } from "@/components/GlassCursor";
+import { LiquidGlassFilters } from "@/components/LiquidGlassFilters";
 import type { DashboardData } from "@shared/schema";
 import Dashboard from "@/pages/Dashboard";
 import RelativeStrength from "@/pages/RelativeStrength";
@@ -67,6 +68,9 @@ function App() {
                   </linearGradient>
                 </defs>
               </svg>
+              {/* Reusable liquid-glass refraction filters (glass theme) —
+                  referenced by index.css via backdrop-filter: url(#lg-*) */}
+              <LiquidGlassFilters />
               {/* Sticky ticker bar across all pages */}
               <div className="flex-shrink-0 sticky top-0 z-50 glass-chrome" style={{ background: "var(--terminal-surface)" }}>
                 <GlobalTickerBar />
