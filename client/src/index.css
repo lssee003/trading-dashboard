@@ -343,15 +343,13 @@
   background-attachment: fixed;
 }
 
-/* ── Liquid glass backdrop ───────────────────────────────────────────
+/* ── Glass Field backdrop ────────────────────────────────────────────
    A fixed layer behind all content (negative z-index inside the root
-   stacking context: above the body wallpaper, below every panel).
-   The procedural WebGL scene (client/src/background) renders into
-   .liquid-canvas: starfield, volumetric light, glass distortion
-   field, raymarched glass sculpture, post processing. If WebGL2 is
-   unavailable the .liquid-blob CSS fallback takes over — two
-   asymmetric neutral blobs on transform-only keyframes plus a conic
-   sheen, so the theme keeps a backdrop everywhere. */
+   stacking context: above the body wallpaper, below every panel). The
+   WebGL2 "Glass Field" — a raymarched black-glass blob in a starfield,
+   ported from the Claude Design file "Glass Field.dc.html" — renders
+   into .liquid-canvas, which covers the layer. Engine + shaders live in
+   lib/glassField/; it is mounted by GlassBackdrop.tsx. */
 .liquid-field {
   position: fixed;
   inset: 0;
@@ -361,71 +359,15 @@
   animation: liquid-fade-in 1600ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Noise grain: dithers gradient banding and gives the material tooth */
-.liquid-field::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-}
-
-/* The WebGL scene — the engine handles DPR, adaptive resolution,
-   reduced motion (single still frame) and hidden-tab pausing itself */
+/* The WebGL canvas — covers the layer; opaque black until the first
+   frame lands so there is no flash of the body wallpaper */
 .liquid-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-}
-
-/* CSS fallback (WebGL2 unavailable / context lost): neutral silver-blue
-   blobs — the scene is decoration, so the fallback carries no signal */
-.liquid-blob {
-  position: absolute;
-  will-change: transform;
-}
-
-.liquid-a {
-  width: 78vmax;
-  height: 64vmax;
-  left: -10vmax;
-  top: -14vmax;
-  background: radial-gradient(closest-side at 48% 50%,
-    rgba(148, 163, 184, 0.24) 0%,
-    rgba(96, 165, 250, 0.16) 46%,
-    transparent 76%);
-  border-radius: 45% 55% 52% 48% / 58% 44% 56% 42%;
-  animation: liquid-drift-a 90s ease-in-out infinite alternate;
-}
-
-.liquid-b {
-  width: 62vmax;
-  height: 54vmax;
-  right: -12vmax;
-  bottom: -14vmax;
-  background: radial-gradient(closest-side at 52% 50%,
-    rgba(148, 163, 184, 0.24) 0%,
-    rgba(96, 165, 250, 0.16) 44%,
-    transparent 74%);
-  border-radius: 55% 45% 48% 52% / 45% 58% 42% 55%;
-  animation: liquid-drift-b 130s ease-in-out infinite alternate;
-}
-
-/* Rotating specular arc — the slow glassy shine */
-.liquid-sheen {
-  position: absolute;
-  inset: -25%;
-  background: conic-gradient(from 20deg at 58% 42%,
-    transparent 0deg,
-    rgba(255, 255, 255, 0.035) 42deg,
-    rgba(255, 255, 255, 0.015) 80deg,
-    transparent 130deg,
-    rgba(203, 213, 225, 0.09) 210deg,
-    transparent 260deg);
-  will-change: transform;
-  animation: liquid-sheen-spin 160s linear infinite;
+  background: #000000;
 }
 
 @keyframes liquid-fade-in {
@@ -433,34 +375,10 @@
   to   { opacity: 1; }
 }
 
-@keyframes liquid-drift-a {
-  0%   { transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1); }
-  33%  { transform: translate3d(7%, 5%, 0) rotate(38deg) scale(1.14); }
-  66%  { transform: translate3d(-3%, 9%, 0) rotate(74deg) scale(0.94); }
-  100% { transform: translate3d(9%, -2%, 0) rotate(115deg) scale(1.06); }
-}
-
-@keyframes liquid-drift-b {
-  0%   { transform: translate3d(4%, 6%, 0) rotate(0deg) scale(1); }
-  40%  { transform: translate3d(-8%, -3%, 0) rotate(-46deg) scale(1.12); }
-  70%  { transform: translate3d(3%, -8%, 0) rotate(-88deg) scale(0.92); }
-  100% { transform: translate3d(-5%, 4%, 0) rotate(-130deg) scale(1.04); }
-}
-
-@keyframes liquid-sheen-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-/* Reduced motion: the fallback blobs hold still; the WebGL engine
-   freezes itself to a single composed frame */
+/* Reduced motion: the field fades in without drift; the engine detects
+   the same preference and renders a single settled frame (no loop) */
 @media (prefers-reduced-motion: reduce) {
   .liquid-field { animation: none; }
-  .liquid-blob,
-  .liquid-sheen {
-    animation: none !important;
-    will-change: auto;
-  }
 }
 
 /* ======================================================================
@@ -498,7 +416,7 @@
   -webkit-clip-path: path("M2 1.4 L2 22.3 L7.05 17.5 L10.35 24.9 L13.2 23.6 L9.95 16.45 L17 16.2 Z");
   clip-path: path("M2 1.4 L2 22.3 L7.05 17.5 L10.35 24.9 L13.2 23.6 L9.95 16.45 L17 16.2 Z");
   -webkit-backdrop-filter: blur(2px) saturate(1.7) brightness(1.12);
-  backdrop-filter: blur(2px) saturate(1.7) brightness(1.12);
+  backdrop-filter: url(#lg-refract-lens) blur(2px) saturate(1.7) brightness(1.12);
   background: linear-gradient(140deg,
     rgba(255, 255, 255, 0.55) 0%,
     rgba(255, 255, 255, 0.14) 45%,
@@ -783,8 +701,11 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
     rgba(7, 11, 24, 0.62) !important;
   border-color: rgba(255, 255, 255, 0.10) !important;
+  /* Gentle long-wavelength refraction: the ticker text and page content
+     scrolling beneath the sticky bar bow softly through the frost.
+     Chromium honours url(); Safari keeps the -webkit blur-only line. */
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: url(#lg-refract-chrome) blur(28px) saturate(1.8);
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -807,7 +728,7 @@
   );
   border: 1px solid rgba(255, 255, 255, 0.32);
   -webkit-backdrop-filter: blur(10px) saturate(1.6);
-  backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: url(#lg-refract-lens) blur(10px) saturate(1.6);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.38),
     inset 0 -1px 0 rgba(255, 255, 255, 0.10),
@@ -827,7 +748,7 @@
   ) !important;
   border-color: rgba(255, 255, 255, 0.32) !important;
   -webkit-backdrop-filter: blur(10px) saturate(1.6);
-  backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: url(#lg-refract-lens) blur(10px) saturate(1.6);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.38),
     inset 0 -1px 0 rgba(255, 255, 255, 0.10),
@@ -845,7 +766,7 @@
     rgba(255, 255, 255, 0.18)
   ) !important;
   -webkit-backdrop-filter: blur(6px) saturate(1.5);
-  backdrop-filter: blur(6px) saturate(1.5);
+  backdrop-filter: url(#lg-refract-lens) blur(6px) saturate(1.5);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.30),
     inset 0 1px 0 rgba(255, 255, 255, 0.40),
@@ -892,7 +813,7 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
   -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  backdrop-filter: url(#lg-refract-lens) blur(6px);
 }
 
 /* Hover tooltips (metric explainers, RRG dots): frosted dark lens —
@@ -903,7 +824,7 @@
     rgba(8, 13, 26, 0.72) !important;
   border-color: rgba(255, 255, 255, 0.22) !important;
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: url(#lg-refract-lens) blur(20px) saturate(1.6);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.20),
     0 12px 32px rgba(3, 7, 18, 0.55);

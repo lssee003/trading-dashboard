@@ -1,22 +1,35 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
-import { createObsidianScene } from "@/lib/obsidian/engine";
+import { GlassFieldEngine } from "@/lib/glassField/engine";
+import { GLASS_FIELD_CONFIG } from "@/lib/glassField/config";
 
 /**
- * Backdrop for the glass theme: a raymarched black liquid-glass sculpture
- * floating in dark space (see lib/obsidian/). `?bg=solo` raises the canvas
+ * Backdrop for the glass theme: the "Glass Field" — a WebGL2 raymarched
+ * black-glass blob with iridescent soap-film edges, floating in a starfield
+ * with drifting aurora and a warm sun-star. Ported from the Claude Design file
+ * "Glass Field.dc.html" (see lib/glassField/). Rendered into a fixed canvas
+ * that covers the viewport behind all content. `?bg=solo` raises the layer
  * above the UI for visual tuning.
  */
 export function GlassBackdrop() {
   const { theme } = useTheme();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (theme !== "glass") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const scene = createObsidianScene(canvas);
-    return () => scene?.dispose();
+
+    let engine: GlassFieldEngine | null = null;
+    try {
+      engine = new GlassFieldEngine(canvas, GLASS_FIELD_CONFIG);
+      engine.start();
+    } catch (e) {
+      // WebGL2 unavailable / context lost: the field is decoration, so the
+      // dark body wallpaper simply shows through — no fallback needed.
+      console.error("Glass field init failed", e);
+    }
+    return () => engine?.dispose();
   }, [theme]);
 
   if (theme !== "glass") return null;
