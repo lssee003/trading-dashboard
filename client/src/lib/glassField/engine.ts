@@ -45,11 +45,16 @@ export class GlassFieldEngine {
   private startT = 0;
   private running = false;
   private raf = 0;
+  // set once the engine gives up on a machine that can't keep up even at the
+  // scale floor: the loop stops and the last frame is left frozen on screen
+  private frozen = false;
 
-  // adaptive-resolution frame-time bookkeeping
-  private lastT = 0;
-  private ema = 0;
-  private fc = 0;
+  // adaptive-resolution / framerate bookkeeping
+  private lastRenderTime = 0; // timestamp of the previous *rendered* frame
+  private cadenceEma = 0;     // smoothed gap between rendered frames (~target when healthy)
+  private costEma = 0;        // smoothed CPU cost of a render (headroom signal)
+  private fc = 0;             // frames since the last adaptive check
+  private struggleTicks = 0;  // consecutive bad windows while pinned at the floor
 
   private onResize = () => this.resize();
   private onMove = (e: PointerEvent) => {
@@ -60,7 +65,7 @@ export class GlassFieldEngine {
   private onVis = () => {
     if (document.hidden) {
       this.running = false;
-    } else if (!this.reduced) {
+    } else if (!this.reduced && !this.frozen) {
       this.running = true;
       this.startLoop();
     }
@@ -129,8 +134,11 @@ export class GlassFieldEngine {
       antialias: false,
       alpha: false,
       depth: false,
-      powerPreference: "high-performance",
-      preserveDrawingBuffer: true,
+      // "default" lets the browser stay on the integrated GPU for a background
+      // effect instead of waking a battery-hungry discrete GPU. No
+      // preserveDrawingBuffer: we never read the canvas back, and dropping it
+      // frees the driver from keeping an extra copy each frame.
+      powerPreference: "default",
     });
     if (!gl) throw new Error("WebGL2 unavailable");
     this.gl = gl;
@@ -180,7 +188,10 @@ export class GlassFieldEngine {
     this.W = w;
     this.H = h;
     this.applyScale();
+    // static states (reduced-motion, or frozen after giving up) don't loop, so
+    // repaint a single frame here or the resized canvas would be left blank
     if (this.reduced) this.renderFrame(8.0);
+    else if (this.frozen) this.renderFrame((performance.now() - this.startT) / 1000);
   }
 
   private applyScale() {
@@ -208,13 +219,25 @@ export class GlassFieldEngine {
 
   private startLoop() {
     if (this.raf) cancelAnimationFrame(this.raf);
-    const loop = () => {
+    const interval = 1000 / this.config.maxFps;
+    const loop = (now: number) => {
       if (!this.running) return;
-      const t = (performance.now() - this.startT) / 1000;
-      this.mouse.x += (this.tgt.x - this.mouse.x) * 0.04;
-      this.mouse.y += (this.tgt.y - this.mouse.y) * 0.04;
-      this.renderFrame(t);
       this.raf = requestAnimationFrame(loop);
+      // throttle to the target framerate — ambient drift needs no more, and
+      // this halves the work on machines that could otherwise run at 60/120Hz.
+      // (a few ms of slack so we land on 30fps from a 60Hz rAF, not 20fps)
+      if (now - this.lastRenderTime < interval - 4) return;
+      // cadence = real gap between rendered frames: ~interval when the GPU keeps
+      // up, larger when it can't — this is the adaptive-resolution health signal
+      const cadence = this.lastRenderTime ? now - this.lastRenderTime : interval;
+      this.lastRenderTime = now;
+      this.cadenceEma = this.cadenceEma ? this.cadenceEma * 0.9 + cadence * 0.1 : cadence;
+      const t = (now - this.startT) / 1000;
+      // slightly stronger pointer easing to keep the same feel at 30fps
+      this.mouse.x += (this.tgt.x - this.mouse.x) * 0.09;
+      this.mouse.y += (this.tgt.y - this.mouse.y) * 0.09;
+      this.renderFrame(t);
+      this.adapt();
     };
     this.raf = requestAnimationFrame(loop);
   }
@@ -222,25 +245,7 @@ export class GlassFieldEngine {
   private renderFrame(t: number) {
     const gl = this.gl;
     if (!gl || !this.W) return;
-
-    // adaptive resolution: nudge render scale from a frame-time EMA
-    const now = performance.now();
-    if (this.lastT) {
-      const dt = now - this.lastT;
-      this.ema = this.ema ? this.ema * 0.9 + dt * 0.1 : dt;
-    }
-    this.lastT = now;
-    this.fc += 1;
-    if (this.fc > 40 && this.ema) {
-      this.fc = 0;
-      let ns = this.scale;
-      if (this.ema > 30 && this.scale > 0.8) ns = Math.max(0.8, this.scale - 0.1);
-      else if (this.ema < 15 && this.scale < 1.0) ns = Math.min(1.0, this.scale + 0.1);
-      if (ns !== this.scale) {
-        this.scale = ns;
-        this.applyScale();
-      }
-    }
+    const t0 = performance.now();
 
     gl.bindVertexArray(this.vao);
 
@@ -267,5 +272,49 @@ export class GlassFieldEngine {
     gl.uniform2f(this.cu.res, this.W, this.H);
     gl.uniform1f(this.cu.time, t);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    // CPU-side cost of submitting the frame; rises under GPU backpressure, so it
+    // doubles as the "is there headroom to scale back up?" signal
+    const cost = performance.now() - t0;
+    this.costEma = this.costEma ? this.costEma * 0.9 + cost * 0.1 : cost;
+  }
+
+  /** Every ~40 rendered frames, trade render scale for framerate — and if even
+   *  the scale floor can't hold the target, freeze to a static frame so a weak
+   *  machine never runs a sluggish loop under the dashboard. */
+  private adapt() {
+    this.fc += 1;
+    if (this.fc <= 40 || !this.cadenceEma) return;
+    this.fc = 0;
+
+    const target = 1000 / this.config.maxFps;
+    const floor = this.config.scaleFloor;
+
+    let ns = this.scale;
+    if (this.cadenceEma > target * 1.35 && this.scale > floor) {
+      ns = Math.max(floor, this.scale - 0.1); // missing the target -> shed pixels
+    } else if (this.cadenceEma < target * 1.12 && this.costEma < target * 0.45 && this.scale < 1.0) {
+      ns = Math.min(1.0, this.scale + 0.1); // comfortable headroom -> sharpen
+    }
+    if (ns !== this.scale) {
+      this.scale = ns;
+      this.applyScale();
+    }
+
+    // still far behind while pinned at the floor across ~2 windows (~2-3s):
+    // give up and freeze rather than grind
+    if (this.scale <= floor + 1e-3 && this.cadenceEma > target * 1.7) {
+      if (++this.struggleTicks >= 2) this.freeze();
+    } else {
+      this.struggleTicks = 0;
+    }
+  }
+
+  /** Stop the loop and leave the last composited frame frozen on screen. */
+  private freeze() {
+    this.frozen = true;
+    this.running = false;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    console.info("Glass field: sustained low framerate — froze to a static frame.");
   }
 }

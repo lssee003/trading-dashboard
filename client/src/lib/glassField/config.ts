@@ -20,6 +20,12 @@ export interface GlassFieldConfig {
   iridescence: number;
   /** Device-pixel-ratio cap; the render target is sized at min(dpr, cap). */
   dprCap: number;
+  /** Lowest adaptive render scale — a weak GPU sheds pixels down to this
+   *  fraction of the canvas before the engine gives up and freezes. */
+  scaleFloor: number;
+  /** Frame-rate cap. The motion is slow ambient drift, so 30 looks identical
+   *  to 60/120 while roughly halving GPU/battery cost. */
+  maxFps: number;
 }
 
 export const GLASS_FIELD_CONFIG: GlassFieldConfig = {
@@ -28,6 +34,8 @@ export const GLASS_FIELD_CONFIG: GlassFieldConfig = {
   drift: 0.3,
   iridescence: 1.6,
   dprCap: 1.6,
+  scaleFloor: 0.5,
+  maxFps: 30,
 };
 
 /** Shader encodes mood as a float: 0 Cosmic, 1 Ember, 2 Ice. */
