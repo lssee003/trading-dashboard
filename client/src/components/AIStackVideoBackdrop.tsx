@@ -43,6 +43,7 @@ export function AIStackVideoBackdrop() {
     };
 
     video.addEventListener("loadedmetadata", onLoadedMetadata);
+    if (video.readyState >= 1 /* HAVE_METADATA */) onLoadedMetadata();
     window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
