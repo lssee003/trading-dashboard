@@ -5,18 +5,18 @@ import { useEffect, useRef } from "react";
  * playback position is driven entirely by the page's own scroll position —
  * it never plays on its own. Replaces the Glass Field WebGL backdrop on
  * this page (see GlassBackdrop.tsx, which skips mounting on /ai-stack).
+ *
+ * Listens on `window`, not a container ref: the page's layout (App.tsx's
+ * `min-h-screen` root) lets the whole document grow and scroll rather than
+ * clipping height into an internally-scrolling `<main>`, so the window is
+ * the real scroll source here.
  */
-export function AIStackVideoBackdrop({
-  scrollContainerRef,
-}: {
-  scrollContainerRef: React.RefObject<HTMLElement>;
-}) {
+export function AIStackVideoBackdrop() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const video = videoRef.current;
-    const container = scrollContainerRef.current;
-    if (!video || !container) return;
+    if (!video) return;
 
     let duration = 0;
     let rafPending = false;
@@ -24,8 +24,8 @@ export function AIStackVideoBackdrop({
     const applyProgress = () => {
       rafPending = false;
       if (!duration) return;
-      const scrollRange = container.scrollHeight - container.clientHeight;
-      const progress = scrollRange > 0 ? container.scrollTop / scrollRange : 0;
+      const scrollRange = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = scrollRange > 0 ? window.scrollY / scrollRange : 0;
       const clamped = Math.min(1, Math.max(0, progress));
       video.currentTime = clamped * duration;
     };
@@ -43,13 +43,13 @@ export function AIStackVideoBackdrop({
     };
 
     video.addEventListener("loadedmetadata", onLoadedMetadata);
-    container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
     };
-  }, [scrollContainerRef]);
+  }, []);
 
   return (
     <div className="ai-stack-video-field" aria-hidden="true" data-testid="ai-stack-video-backdrop">
