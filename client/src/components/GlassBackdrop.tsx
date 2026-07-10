@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
+import { useLocation } from "wouter";
 import { GlassFieldEngine } from "@/lib/glassField/engine";
 import { GLASS_FIELD_CONFIG } from "@/lib/glassField/config";
 
@@ -13,10 +14,12 @@ import { GLASS_FIELD_CONFIG } from "@/lib/glassField/config";
  */
 export function GlassBackdrop() {
   const { theme } = useTheme();
+  const [location] = useLocation();
+  const isAiStack = location === "/ai-stack";
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (theme !== "glass") return;
+    if (theme !== "glass" || isAiStack) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -30,9 +33,9 @@ export function GlassBackdrop() {
       console.error("Glass field init failed", e);
     }
     return () => engine?.dispose();
-  }, [theme]);
+  }, [theme, isAiStack]);
 
-  if (theme !== "glass") return null;
+  if (theme !== "glass" || isAiStack) return null;
 
   const solo =
     typeof window !== "undefined" &&
