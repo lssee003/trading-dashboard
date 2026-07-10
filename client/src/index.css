@@ -381,6 +381,44 @@
   .liquid-field { animation: none; }
 }
 
+/* ── AI Stack video backdrop ─────────────────────────────────────────
+   Fixed layer behind AI Stack page content (same stacking slot as
+   .liquid-field: above the body wallpaper, below every panel). Video
+   position is driven entirely by scroll (see AIStackVideoBackdrop.tsx);
+   it never plays on its own. */
+.ai-stack-video-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  animation: liquid-fade-in 1600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ai-stack-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #000000;
+}
+
+/* Darkens the footage so translucent .glass-panel cards stay legible */
+.ai-stack-video-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1200px 800px at 12% -10%, rgba(56, 130, 246, 0.10), transparent 62%),
+    radial-gradient(1000px 700px at 88% 8%, rgba(124, 88, 250, 0.10), transparent 58%),
+    linear-gradient(180deg, rgba(5, 7, 15, 0.55) 0%, rgba(5, 7, 15, 0.72) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-stack-video-field { animation: none; }
+}
+
 /* ======================================================================
    Liquid-glass cursor (glass theme, fine pointer only). See GlassCursor.tsx.
    A normal pointer arrow rendered as glass: the arrow silhouette refracts the
