@@ -6,6 +6,8 @@ import { AppHeader } from "../components/AppHeader";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { useViewTransitionNavigate } from "@/lib/viewTransition";
 import { AI_STACK_DATA } from "@/data/aiStack";
+import { AIStackVideoBackdrop } from "@/components/AIStackVideoBackdrop";
+import { useTheme } from "@/hooks/useTheme";
 
 // Pull "(also L2)" / "(also L11/L12)" cross-references out of role copy and surface
 // them as a separate chip so the overlapping-node insight reads as data, not parenthetical aside.
@@ -26,6 +28,8 @@ function parseRole(role: string): { text: string; alsoLayers: string[] } {
 
 export default function AIStack() {
   const navigateWithTransition = useViewTransitionNavigate();
+  const { theme } = useTheme();
+  const mainRef = useRef<HTMLElement>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -148,7 +152,8 @@ export default function AIStack() {
       />
 
       {/* ─── Main Content ─── */}
-      <main className="flex-1 overflow-y-auto p-3 md:p-4">
+      {theme === "glass" && <AIStackVideoBackdrop scrollContainerRef={mainRef} />}
+      <main ref={mainRef} className="flex-1 overflow-y-auto p-3 md:p-4">
         <div className="max-w-[1100px] mx-auto space-y-3">
 
           {/* ─── Page intro ─── */}
