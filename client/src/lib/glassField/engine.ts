@@ -29,7 +29,7 @@ export class GlassFieldEngine {
   private fbo!: WebGLFramebuffer;
   private tex!: WebGLTexture;
 
-  private su!: Record<"res" | "time" | "mouse" | "sep" | "drift" | "irid" | "mood", WebGLUniformLocation | null>;
+  private su!: Record<"res" | "time" | "mouse" | "mood", WebGLUniformLocation | null>;
   private cu!: Record<"res" | "time" | "scene", WebGLUniformLocation | null>;
 
   // full-window backing store size (device px) and render-target size (scaled)
@@ -162,9 +162,6 @@ export class GlassFieldEngine {
       res: gl.getUniformLocation(this.sceneProg, "uRes"),
       time: gl.getUniformLocation(this.sceneProg, "uTime"),
       mouse: gl.getUniformLocation(this.sceneProg, "uMouse"),
-      sep: gl.getUniformLocation(this.sceneProg, "uSep"),
-      drift: gl.getUniformLocation(this.sceneProg, "uDrift"),
-      irid: gl.getUniformLocation(this.sceneProg, "uIrid"),
       mood: gl.getUniformLocation(this.sceneProg, "uMood"),
     };
     this.cu = {
@@ -256,9 +253,6 @@ export class GlassFieldEngine {
     gl.uniform2f(this.su.res, this.rW, this.rH);
     gl.uniform1f(this.su.time, t);
     gl.uniform2f(this.su.mouse, this.mouse.x, this.mouse.y);
-    gl.uniform1f(this.su.sep, this.config.separation);
-    gl.uniform1f(this.su.drift, this.config.drift);
-    gl.uniform1f(this.su.irid, this.config.iridescence);
     gl.uniform1f(this.su.mood, moodIndex(this.config.mood));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 

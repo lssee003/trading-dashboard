@@ -5,9 +5,8 @@ import { GlassFieldEngine } from "@/lib/glassField/engine";
 import { GLASS_FIELD_CONFIG } from "@/lib/glassField/config";
 
 /**
- * Backdrop for the glass theme: the "Glass Field" — a WebGL2 raymarched
- * black-glass blob with iridescent soap-film edges, floating in a starfield
- * with drifting aurora and a warm sun-star. Ported from the Claude Design file
+ * Backdrop for the glass theme: the "Glass Field" — a WebGL2 starfield with
+ * drifting aurora and a warm sun-star. Adapted from the Claude Design file
  * "Glass Field.dc.html" (see lib/glassField/). Rendered into a fixed canvas
  * that covers the viewport behind all content. `?bg=solo` raises the layer
  * above the UI for visual tuning.
