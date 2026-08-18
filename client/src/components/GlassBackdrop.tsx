@@ -1,52 +1,45 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { useLocation } from "wouter";
-import { GlassFieldEngine } from "@/lib/glassField/engine";
-import { GLASS_FIELD_CONFIG } from "@/lib/glassField/config";
+import { StarfieldEngine } from "@/lib/starfield/engine";
+import { STARFIELD_CONFIG } from "@/lib/starfield/config";
 
 /**
- * Backdrop for the glass theme: the "Glass Field" — a WebGL2 starfield with
- * drifting aurora and a warm sun-star. Adapted from the Claude Design file
- * "Glass Field.dc.html" (see lib/glassField/). Rendered into a fixed canvas
- * that covers the viewport behind all content. `?bg=solo` raises the layer
- * above the UI for visual tuning.
+ * Backdrop for the glass theme: a static nebula (pure CSS, `.glass body` in
+ * index.css — it doesn't move, so there's no reason to paint it in JS) with
+ * a field of stars on top that only twinkle in place (`lib/starfield/`,
+ * Canvas2D, no WebGL, no shader). Star positions are fixed at generation
+ * time; the only motion is per-star opacity.
  */
 export function GlassBackdrop() {
   const { theme } = useTheme();
   const [location] = useLocation();
   const isAiStack = location === "/ai-stack";
+  const active = theme === "glass" && !isAiStack;
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (theme !== "glass" || isAiStack) return;
+    if (!active) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let engine: GlassFieldEngine | null = null;
+    let engine: StarfieldEngine | null = null;
     try {
-      engine = new GlassFieldEngine(canvas, GLASS_FIELD_CONFIG);
+      engine = new StarfieldEngine(canvas, STARFIELD_CONFIG);
       engine.start();
     } catch (e) {
-      // WebGL2 unavailable / context lost: the field is decoration, so the
-      // dark body wallpaper simply shows through — no fallback needed.
-      console.error("Glass field init failed", e);
+      // Canvas2D is universally available, but guard anyway: the CSS
+      // nebula wallpaper underneath reads fine on its own regardless.
+      console.error("Starfield init failed", e);
     }
     return () => engine?.dispose();
-  }, [theme, isAiStack]);
+  }, [active]);
 
-  if (theme !== "glass" || isAiStack) return null;
-
-  const solo =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("bg") === "solo";
+  if (!active) return null;
 
   return (
-    <div
-      className="liquid-field"
-      style={solo ? { zIndex: 60 } : undefined}
-      aria-hidden="true"
-      data-testid="glass-backdrop"
-    >
+    <div className="liquid-field" aria-hidden="true" data-testid="glass-backdrop">
       <canvas ref={canvasRef} className="liquid-canvas" />
     </div>
   );

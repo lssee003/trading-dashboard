@@ -23,6 +23,9 @@ Each indicator has a hover tooltip explaining what it measures and why it matter
 **Market Monitor** — scoring dashboard with indicator breakdown and trade decision
 ![Market Monitor](img/Market%20Monitor.png)
 
+**Glass Theme** — iOS Liquid Glass panels over a static nebula backdrop with a twinkling starfield
+![Glass Theme](img/Glass%20Theme.png)
+
 **Market Breadth** — Google Sheets-powered breadth table with conditional formatting
 ![Market Breadth](img/Market%20Breadth.png)
 
@@ -103,7 +106,7 @@ Set via `.env.development` and `.env.production` (read by Vite at build time).
 
 ## Features
 
-- **Terminal-style UI** with dark and light themes
+- **Terminal-style UI** with light, dark, and iOS Liquid Glass themes
 - **Auto-refresh** (dev) or daily snapshot (prod)
 - **Sector heatmap** showing 11 GICS sectors with daily performance
 - **25-day Relative Strength** histogram with rotation analysis
