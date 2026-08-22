@@ -2,8 +2,8 @@ name: Refresh Market Data & Deploy
 
 on:
   schedule:
-    - cron: '0 13 * * 1-5'   # ~9:00 AM EDT / 8:00 AM EST (30min before open)
-    - cron: '15 21 * * 1-5'  # ~5:15 PM EDT / 4:15 PM EST (after close)
+    - cron: '0 13 * * 1-5'   # 21:00 SGT Mon-Fri — pre-open build (~30min before US open)
+    - cron: '0 1 * * 2-6'    # 09:00 SGT Tue-Sat — after the RS pipeline's ~07:55 SGT commit
   workflow_dispatch: # manual trigger
 
 permissions:
