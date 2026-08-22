@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { StockRSTab } from "../components/StockRSTab";
 import {
   LOOKBACK_OPTIONS,
   BENCHMARK_OPTIONS,
@@ -59,11 +60,11 @@ export default function RelativeStrength() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [extraTickers, setExtraTickers] = useState<string[]>([]);
-  const [tickerInput, setTickerInput] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("rsVsBenchmark");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [viewMode, setViewMode] = useState<"table" | "rrg">("table");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [pageTab, setPageTab] = useState<"etf" | "stocks">("etf");
 
   // ─── Magnetic RRG button ───
   const rrgBtnRef = useRef<HTMLButtonElement>(null);
@@ -117,14 +118,21 @@ export default function RelativeStrength() {
     refetchInterval: 120_000,
   });
 
-  // Add ticker
+  // Add ticker — the search input doubles as the add field. A query only
+  // qualifies when it looks like a symbol (letters/dot/dash, ≤6 chars).
+  const canAddTicker = useMemo(() => {
+    const sym = searchQuery.trim().toUpperCase();
+    return /^[A-Z][A-Z.\-]{0,5}$/.test(sym) && !extraTickers.includes(sym);
+  }, [searchQuery, extraTickers]);
+
   const handleAddTicker = useCallback(() => {
-    const sym = tickerInput.trim().toUpperCase();
-    if (sym && !extraTickers.includes(sym)) {
+    if (IS_STATIC) return;
+    const sym = searchQuery.trim().toUpperCase();
+    if (/^[A-Z][A-Z.\-]{0,5}$/.test(sym) && !extraTickers.includes(sym)) {
       setExtraTickers((prev) => [...prev, sym]);
+      setSearchQuery("");
     }
-    setTickerInput("");
-  }, [tickerInput, extraTickers]);
+  }, [searchQuery, extraTickers]);
 
   const handleRemoveTicker = useCallback((sym: string) => {
     setExtraTickers((prev) => prev.filter((s) => s !== sym));
@@ -254,6 +262,34 @@ export default function RelativeStrength() {
     </th>
   );
 
+  // Universe switch — ETF momentum vs IBD stock ratings. Lives inside each
+  // mode's control bar (leading segment) so the page keeps one chrome layer.
+  const universeSwitch = (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Universe</span>
+      <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
+        {([
+          { id: "etf" as const, label: "ETF", hint: "Theme/sector ETF momentum vs benchmark" },
+          { id: "stocks" as const, label: "Stocks", hint: "IBD-style 0-99 RS percentile, ~6,000 stocks" },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setPageTab(tab.id)}
+            title={tab.hint}
+            className={`px-2 py-1 text-[11px] font-medium transition-all${pageTab === tab.id ? " seg-active" : ""}`}
+            style={{
+              background: pageTab === tab.id ? "var(--terminal-blue)" : "transparent",
+              color: pageTab === tab.id ? "#fff" : "var(--terminal-dim)",
+            }}
+            data-testid={`page-tab-${tab.id}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   // RS color helper
   const rsColor = (rs: number) =>
     rs >= 1.02 ? "var(--terminal-green)" : rs <= 0.98 ? "var(--terminal-red)" : "var(--text-secondary)";
@@ -316,13 +352,19 @@ export default function RelativeStrength() {
       <main className="flex-1 overflow-y-auto p-3 md:p-4">
         <div className="max-w-[1600px] mx-auto space-y-3">
 
+          {pageTab === "stocks" && <StockRSTab universeSwitch={universeSwitch} />}
+
+          {pageTab === "etf" && (<>
+
           {/* ─── Controls Row ─── */}
           <div
             className="rounded-lg border p-3 glass-panel"
             style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
           >
-            <div className="flex flex-wrap items-center gap-3">
-              {/* View toggle — far left. RRG is a standalone button so box-shadow isn't clipped. */}
+            <div className="flex flex-wrap items-center gap-3 min-h-[1.75rem]">
+              {universeSwitch}
+
+              {/* View toggle. RRG is a standalone button so box-shadow isn't clipped. */}
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>View</span>
                 <div className="flex items-center gap-1">
@@ -342,7 +384,7 @@ export default function RelativeStrength() {
                   </button>
 
                   {/* RRG button — magnetic pull + electric arc on hover */}
-                  <div ref={rrgWrapRef} className="relative rrg-magnetic-zone" style={{ padding: "4px" }}>
+                  <div ref={rrgWrapRef} className="relative rrg-magnetic-zone" style={{ padding: "4px", margin: "-4px 0" }}>
                     <button
                       ref={rrgBtnRef}
                       onClick={() => { setViewMode("rrg"); setBenchmark("SPY"); setLookback(10); setCategoryFilter("Sector"); }}
@@ -459,8 +501,8 @@ export default function RelativeStrength() {
               </div>
 
 
-              {/* Search */}
-              <div className="flex items-center gap-1.5 basis-full md:basis-auto md:flex-1 md:min-w-[140px]">
+              {/* Search / add ticker — one input. Typing filters; Enter or + adds a symbol. */}
+              <div className="flex items-center gap-1.5 basis-full md:basis-auto md:flex-1 md:min-w-[150px]">
                 <div
                   className="flex items-center gap-1.5 px-2 py-1 rounded flex-1"
                   style={{ background: "var(--overlay-subtle)", border: "1px solid var(--terminal-border)" }}
@@ -470,95 +512,36 @@ export default function RelativeStrength() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search symbol or name"
+                    onKeyDown={(e) => e.key === "Enter" && handleAddTicker()}
+                    placeholder="Search · Enter adds ticker"
                     className="bg-transparent text-[11px] outline-none flex-1 min-w-0"
                     style={{ color: "var(--text-primary)" }}
                     data-testid="input-search"
                   />
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery("")} className="opacity-40 hover:opacity-100">
+                    <button onClick={() => setSearchQuery("")} className="opacity-40 hover:opacity-100" aria-label="Clear search">
                       <X className="w-3 h-3" />
                     </button>
                   )}
+                  <button
+                    onClick={handleAddTicker}
+                    disabled={IS_STATIC || !canAddTicker}
+                    className="flex-shrink-0 p-0.5 rounded transition-opacity"
+                    style={{
+                      color: "var(--terminal-cyan)",
+                      opacity: IS_STATIC || !canAddTicker ? 0.25 : 0.9,
+                      cursor: IS_STATIC ? "not-allowed" : canAddTicker ? "pointer" : "default",
+                    }}
+                    title={IS_STATIC
+                      ? "Ad-hoc tickers need the live backend. The public demo is a static snapshot — run the app locally to add tickers."
+                      : "Add this symbol to the table"}
+                    aria-label="Add ticker to table"
+                    data-testid="button-add-ticker"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-
-              {/* Add ticker */}
-              <div
-                className="flex items-center gap-1"
-                title={IS_STATIC ? "Ad-hoc tickers need the live backend. The public demo (GitHub Pages) is a static snapshot — run the app locally to add tickers." : undefined}
-                style={{ cursor: IS_STATIC ? "not-allowed" : undefined }}
-              >
-                <div
-                  className="flex items-center gap-1 px-2 py-1 rounded"
-                  style={{
-                    background: "var(--overlay-subtle)",
-                    border: "1px solid var(--terminal-border)",
-                    opacity: IS_STATIC ? 0.4 : 1,
-                  }}
-                >
-                  <Plus className="w-3 h-3 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
-                  <input
-                    type="text"
-                    value={tickerInput}
-                    onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddTicker()}
-                    placeholder="Add ticker"
-                    className="bg-transparent text-[11px] outline-none w-[70px]"
-                    style={{ color: "var(--text-primary)" }}
-                    data-testid="input-add-ticker"
-                    disabled={IS_STATIC}
-                  />
-                </div>
-                <button
-                  onClick={handleAddTicker}
-                  disabled={IS_STATIC}
-                  className="seg-active px-2 py-1 rounded text-[11px] font-medium transition-colors"
-                  style={{
-                    background: "var(--terminal-blue)",
-                    color: "#fff",
-                    opacity: IS_STATIC ? 0.4 : 1,
-                    cursor: IS_STATIC ? "not-allowed" : undefined,
-                  }}
-                  data-testid="button-add-ticker"
-                >
-                  Add
-                </button>
-              </div>
-
-              {/* Export */}
-              <button
-                onClick={handleExport}
-                className="p-1.5 rounded transition-colors opacity-60 hover:opacity-100"
-                title="Export to CSV"
-                data-testid="button-export"
-              >
-                <Download className="w-3.5 h-3.5" />
-              </button>
-
-              {/* AI Stack reference link — thematic-screening cheatsheet */}
-              <a
-                href="#/ai-stack"
-                onClick={(e) => { e.preventDefault(); navigateWithTransition("/ai-stack"); }}
-                className="ai-stack-link vt-ai-stack"
-                title="Open the AI infrastructure stack — 14-layer reference taxonomy"
-                data-testid="link-ai-stack"
-                aria-label="Open AI infrastructure stack reference"
-              >
-                <svg
-                  className="ai-stack-icon"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 14 14"
-                  aria-hidden="true"
-                >
-                  <rect className="bar bar-3" x="2" y="10.5" width="10" height="1.3" rx="0.3" />
-                  <rect className="bar bar-2" x="2" y="6.5"  width="10" height="1.3" rx="0.3" />
-                  <rect className="bar bar-1" x="2" y="2.5"  width="10" height="1.3" rx="0.3" />
-                </svg>
-                <span>AI Stack</span>
-                <ArrowUpRight className="ai-stack-arrow" width={12} height={12} />
-              </a>
             </div>
 
             {/* Mobile: expandable filter panel — Bench / Window / Filter stacked */}
@@ -738,8 +721,8 @@ export default function RelativeStrength() {
 
           {/* ─── Status bar ─── */}
           {data && (
-            <div className="flex items-center justify-between text-[10px] px-1" style={{ color: "var(--text-muted)" }}>
-              <span>
+            <div className="flex items-center justify-between gap-3 text-[10px] px-1" style={{ color: "var(--text-muted)" }}>
+              <span className="min-w-0 truncate">
                 {filteredData.length} of {data.tickers.length} symbols · {lookback}D window · vs {benchmark}
                 {data.failedSymbols.length > 0 && (
                   <span style={{ color: "var(--terminal-amber)" }}>
@@ -748,7 +731,33 @@ export default function RelativeStrength() {
                   </span>
                 )}
               </span>
-              <span>Updated {new Date(data.lastUpdated).toLocaleTimeString()}</span>
+              <span className="flex items-center gap-3 flex-shrink-0">
+                <a
+                  href="#/ai-stack"
+                  onClick={(e) => { e.preventDefault(); navigateWithTransition("/ai-stack"); }}
+                  className="ai-stack-link vt-ai-stack"
+                  title="Open the AI infrastructure stack — 14-layer reference taxonomy"
+                  data-testid="link-ai-stack"
+                  aria-label="Open AI infrastructure stack reference"
+                >
+                  <svg className="ai-stack-icon" width="12" height="12" viewBox="0 0 14 14" aria-hidden="true">
+                    <rect className="bar bar-3" x="2" y="10.5" width="10" height="1.3" rx="0.3" />
+                    <rect className="bar bar-2" x="2" y="6.5"  width="10" height="1.3" rx="0.3" />
+                    <rect className="bar bar-1" x="2" y="2.5"  width="10" height="1.3" rx="0.3" />
+                  </svg>
+                  <span>AI Stack</span>
+                  <ArrowUpRight className="ai-stack-arrow" width={12} height={12} />
+                </a>
+                <button
+                  onClick={handleExport}
+                  className="p-1 rounded transition-colors opacity-60 hover:opacity-100"
+                  title="Export to CSV"
+                  data-testid="button-export"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+                <span>Updated {new Date(data.lastUpdated).toLocaleTimeString()}</span>
+              </span>
             </div>
           )}
 
@@ -888,6 +897,8 @@ export default function RelativeStrength() {
             )}
           </div>
           )}
+
+          </>)}
         </div>
       </main>
 
@@ -896,7 +907,9 @@ export default function RelativeStrength() {
         className="flex-shrink-0 px-4 py-2 text-center text-xs border-t"
         style={{ borderColor: "var(--terminal-border)", color: "var(--text-faint)" }}
       >
-        Relative Strength vs {benchmark} · {lookback}-day window · Yahoo Finance (delayed ~15min)
+        {pageTab === "etf"
+          ? `Relative Strength vs ${benchmark} · ${lookback}-day window · Yahoo Finance (delayed ~15min)`
+          : "IBD-style RS percentile vs SPY · recomputed daily via github.com/lssee003/relative-strength"}
       </footer>
     </div>
   );

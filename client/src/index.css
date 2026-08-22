@@ -1769,3 +1769,48 @@
     inset: -1px;
   }
 }
+
+/* ─── Stock RS: master-detail + windowed table ─── */
+
+.rs-rail-row {
+  height: 30px;
+  border-bottom: 1px solid var(--terminal-border);
+  transition: background 0.12s ease;
+}
+.rs-rail-row:hover { background: var(--overlay-subtle); }
+.rs-rail-row-selected {
+  background: var(--overlay-subtle);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--terminal-cyan) 55%, transparent);
+}
+.rs-rail:focus-visible { box-shadow: inset 0 0 0 1px var(--terminal-cyan); }
+
+/* RS micro-bar in the rail: thin track + signal-colored fill */
+.rs-rail-bar {
+  display: inline-block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--overlay-subtle);
+  overflow: hidden;
+}
+.rs-rail-bar > span { display: block; height: 100%; border-radius: 2px; }
+
+/* Detail panel content swap */
+.rs-detail { animation: rs-detail-in 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes rs-detail-in {
+  from { opacity: 0; transform: translateX(4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-detail { animation: none; }
+}
+
+/* Sticky table headers inside scroll viewports */
+.rs-sticky-head th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--terminal-surface);
+}
+.glass .rs-sticky-head th { background: rgba(10, 16, 32, 0.92); }
+
+.rs-data-row:hover { background: var(--overlay-subtle); }

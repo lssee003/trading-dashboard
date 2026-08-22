@@ -167,3 +167,41 @@ export const SheetsDataSchema = z.object({
 });
 
 export type SheetsData = z.infer<typeof SheetsDataSchema>;
+
+// ─── IBD-Style Stock RS Types (from lssee003/relative-strength daily CSVs) ───
+
+export const RSStockSchema = z.object({
+  rank: z.number(),
+  ticker: z.string(),
+  sector: z.string(),
+  industry: z.string(),
+  rsValue: z.number(),                 // raw RS score (SPY = 100)
+  rsPercentile: z.number(),            // 0-99
+  rs1M: z.number().nullable(),         // percentile 1 month ago
+  rs3M: z.number().nullable(),
+  rs6M: z.number().nullable(),
+  price: z.number().nullable(),
+  marketCap: z.number().nullable(),
+  pctFrom52WkHigh: z.number().nullable(),
+  avgVol30: z.number().nullable(),
+});
+
+export type RSStock = z.infer<typeof RSStockSchema>;
+
+export const RSIndustrySchema = z.object({
+  rank: z.number(),
+  industry: z.string(),
+  sector: z.string(),
+  rsPercentile: z.number(),
+  tickers: z.array(z.string()),        // members, strongest first
+});
+
+export type RSIndustry = z.infer<typeof RSIndustrySchema>;
+
+export const RSStocksResponseSchema = z.object({
+  stocks: z.array(RSStockSchema),
+  industries: z.array(RSIndustrySchema),
+  lastUpdated: z.string(),
+});
+
+export type RSStocksResponse = z.infer<typeof RSStocksResponseSchema>;

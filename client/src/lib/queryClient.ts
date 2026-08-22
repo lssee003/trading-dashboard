@@ -13,6 +13,7 @@ const API_BASE = IS_STATIC
 const STATIC_PATH_MAP: Record<string, string> = {
   "/api/dashboard": "/data/dashboard.json",
   "/api/sheets": "/data/sheets.json",
+  "/api/rs-stocks": "/data/rs-stocks.json",
 };
 
 function resolveStaticPath(queryKey: readonly unknown[]): string {

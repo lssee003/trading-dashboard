@@ -12,7 +12,7 @@ const SHEET_ID = '1O6OhS7ciA8zwfycBfGPbP2fWJnR0pn2UUvFZVDP9jpE';
 const GID = '1082103394'; // 2026 tab
 
 /* ── CSV parser (for data values — faster than XLSX value parsing) ── */
-function parseCSV(text: string): string[][] {
+export function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
   let cur = '', inQ = false;
   const row: string[] = [];

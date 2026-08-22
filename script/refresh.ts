@@ -10,6 +10,7 @@ import path from "path";
 import { fetchDashboardData } from "../server/marketData";
 import { fetchRelativeStrength } from "../server/rsData";
 import { fetchGoogleSheetData } from "../server/sheetsData";
+import { fetchRSStocks } from "../server/rsStocksData";
 import { RS_SYMBOLS } from "../shared/rsSymbols";
 
 const OUT_DIR = path.resolve("client/public/data");
@@ -49,6 +50,22 @@ async function main() {
       rows: [],
       lastUpdated: new Date().toISOString(),
       sheetTitle: "Error loading sheet",
+    }));
+  }
+
+  console.log("=== Refresh: fetching IBD stock RS data ===");
+  const t3 = Date.now();
+  try {
+    const rsStocks = await fetchRSStocks();
+    writeFileSync(path.join(OUT_DIR, "rs-stocks.json"), JSON.stringify(rsStocks));
+    console.log(`Stock RS done — ${rsStocks.stocks.length} stocks (${((Date.now() - t3) / 1000).toFixed(1)}s)`);
+  } catch (error) {
+    console.error("Stock RS fetch failed (continuing):", error);
+    // Write empty data so the page degrades gracefully
+    writeFileSync(path.join(OUT_DIR, "rs-stocks.json"), JSON.stringify({
+      stocks: [],
+      industries: [],
+      lastUpdated: new Date().toISOString(),
     }));
   }
 

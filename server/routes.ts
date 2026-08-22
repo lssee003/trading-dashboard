@@ -4,6 +4,7 @@ import { fetchDashboardData } from "./marketData";
 import { fetchRelativeStrength } from "./rsData";
 import { fetchBreadthMetrics } from "./breadthData";
 import { fetchGoogleSheetData } from "./sheetsData";
+import { fetchRSStocks } from "./rsStocksData";
 import { RS_SYMBOLS } from "../shared/rsSymbols";
 
 export async function registerRoutes(server: Server, app: Express) {
@@ -37,6 +38,20 @@ export async function registerRoutes(server: Server, app: Express) {
       console.error("RS API error:", error);
       res.status(500).json({
         error: "Failed to fetch relative strength data",
+        message: (error as Error).message,
+      });
+    }
+  });
+
+  // IBD-style stock RS ratings (from lssee003/relative-strength daily CSVs)
+  app.get("/api/rs-stocks", async (_req, res) => {
+    try {
+      const data = await fetchRSStocks();
+      res.json(data);
+    } catch (error) {
+      console.error("RS stocks API error:", error);
+      res.status(500).json({
+        error: "Failed to fetch RS stocks data",
         message: (error as Error).message,
       });
     }
