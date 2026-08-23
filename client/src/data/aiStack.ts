@@ -198,6 +198,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
     layer: "L12",
     label: "AI CLOUD & NEOCLOUD OPERATORS",
     sublabel: "Rent compute by the hour — buy all the chips above, sell access",
+    etf: "NCLD",
     companies: [
       { ticker: "NBIS", name: "Nebius Group", role: "AI neocloud — 684% Q1 revenue; $12B Meta deal; Nvidia-backed; $7-9B ARR target" },
       { ticker: "CRWV", name: "CoreWeave", role: "GPU cloud IPO 2025 — pure-play AI compute rental; +162% since IPO" },

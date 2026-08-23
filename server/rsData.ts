@@ -96,6 +96,7 @@ const ETF_META: Record<string, { name: string; category: "Index" | "Sector" | "I
   ARGT: { name: "Argentina Equities", category: "Index" },
   FOTO: { name: "Photonics", category: "Industry Group" },
   PAVE: { name: "Industrial Buildout", category: "Industry Group" },
+  NCLD: { name: "Neocloud", category: "Industry Group" },
 };
 
 // ─── Cache ───
