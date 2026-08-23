@@ -332,29 +332,30 @@
   --scan-sweep-peak: rgba(255, 255, 255, 0.12);
 }
 
-/* Wallpaper — a static nebula. Deliberately not blue-dominant: a muted
-   plum and a muted teal cloud balance each other, plus a faint warm dust
-   lane, the way actual deep-space photography reads (Hubble/JWST emission
-   nebulae mix warm dust with cool gas, not one hue). Nothing here moves —
-   painting motion into a nebula would just be a slower way to draw
-   something static, so this stays plain CSS. Fixed so panels feel like
-   glass sliding over it on scroll. */
+/* Wallpaper — soft diffuse light in near-black, modeled on the reference:
+   a warm terracotta/mauve glow weighted to the right, a cooler violet in the
+   lower-left, everything sinking to black at the corners. This is the STILL
+   base; the drifting blooms (.glass-bloom, below) sit on top and supply the
+   barely-perceptible motion. A dark radial vignette keeps the corners black
+   so panels read as glass floating in depth. Fixed so panels feel like glass
+   sliding over it on scroll. */
 .glass body {
-  background-color: #030408;
+  background-color: #050409;
   background-image:
-    radial-gradient(950px 680px at 16% 12%, rgba(160, 96, 148, 0.10), transparent 62%),
-    radial-gradient(1050px 800px at 84% 6%, rgba(56, 136, 140, 0.09), transparent 64%),
-    radial-gradient(800px 640px at 58% 88%, rgba(160, 110, 64, 0.06), transparent 66%),
-    linear-gradient(180deg, #070810 0%, #030408 100%);
+    radial-gradient(1200px 900px at 82% 18%, rgba(150, 92, 78, 0.16), transparent 60%),
+    radial-gradient(1100px 950px at 22% 88%, rgba(96, 78, 128, 0.12), transparent 62%),
+    radial-gradient(900px 700px at 60% 100%, rgba(150, 108, 74, 0.05), transparent 66%),
+    radial-gradient(150% 130% at 50% 40%, transparent 42%, rgba(3, 3, 8, 0.9) 100%),
+    linear-gradient(180deg, #08070e 0%, #040308 100%);
   background-attachment: fixed;
 }
 
-/* ── Starfield backdrop ───────────────────────────────────────────────
+/* ── Drifting light blooms ────────────────────────────────────────────
    A fixed layer behind all content (negative z-index inside the root
-   stacking context: above the body wallpaper, below every panel). Star
-   positions are generated once and never move; only their opacity
-   twinkles (lib/starfield/, Canvas2D, no WebGL, no shader). Mounted by
-   GlassBackdrop.tsx. */
+   stacking context: above the body wallpaper, below every panel). Three
+   large, heavily-blurred radial-gradient blooms drift on long, offset
+   cycles — transform + opacity only, so they stay GPU-composited and cost
+   nothing to animate. No JS, no canvas. Mounted by GlassBackdrop.tsx. */
 .liquid-field {
   position: fixed;
   inset: 0;
@@ -364,12 +365,50 @@
   animation: liquid-fade-in 1600ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.liquid-canvas {
+.glass-bloom {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  /* soft edge without a blur filter cost: the gradient itself feathers out */
+}
+
+/* Warm terracotta glow, weighted upper-right (reference's dominant light) */
+.glass-bloom--warm {
+  top: -22%;
+  right: -18%;
+  width: 70vw;
+  height: 70vw;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(176, 104, 84, 0.28) 0%,
+    rgba(150, 88, 84, 0.14) 34%,
+    transparent 68%);
+  animation: bloom-warm 78s ease-in-out infinite;
+}
+
+/* Cool violet, lower-left */
+.glass-bloom--cool {
+  bottom: -26%;
+  left: -20%;
+  width: 68vw;
+  height: 68vw;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(112, 92, 156, 0.22) 0%,
+    rgba(88, 76, 132, 0.10) 36%,
+    transparent 68%);
+  animation: bloom-cool 92s ease-in-out infinite;
+}
+
+/* Faint amber dust, center-bottom */
+.glass-bloom--amber {
+  bottom: -30%;
+  left: 34%;
+  width: 54vw;
+  height: 54vw;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(168, 122, 78, 0.12) 0%,
+    rgba(150, 108, 74, 0.05) 40%,
+    transparent 70%);
+  animation: bloom-amber 84s ease-in-out infinite;
 }
 
 @keyframes liquid-fade-in {
@@ -377,10 +416,30 @@
   to   { opacity: 1; }
 }
 
-/* Reduced motion: the field fades in once and holds still; the engine
-   detects the same preference and renders a single settled frame */
+/* Barely-perceptible drift: small translate + scale, offset per bloom so the
+   field never visibly repeats. */
+@keyframes bloom-warm {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.95; }
+  50%  { transform: translate3d(-3%, 4%, 0) scale(1.05); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.95; }
+}
+
+@keyframes bloom-cool {
+  0%   { transform: translate3d(0, 0, 0) scale(1.03); opacity: 0.9; }
+  50%  { transform: translate3d(4%, -3%, 0) scale(1); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0) scale(1.03); opacity: 0.9; }
+}
+
+@keyframes bloom-amber {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
+  50%  { transform: translate3d(3%, -4%, 0) scale(1.06); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
+}
+
+/* Reduced motion: the field fades in once and holds still */
 @media (prefers-reduced-motion: reduce) {
   .liquid-field { animation: none; }
+  .glass-bloom { animation: none; }
 }
 
 /* ── AI Stack video backdrop ─────────────────────────────────────────
