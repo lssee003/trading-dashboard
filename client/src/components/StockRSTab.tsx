@@ -26,6 +26,13 @@ type StockSortKey = "rank" | "ticker" | "industry" | "rsPercentile" | "rs1M" | "
 type SortDir = "asc" | "desc";
 
 const RS_MIN_OPTIONS = [0, 70, 80, 90] as const;
+const MKT_CAP_OPTIONS = [
+  { value: 0, label: "Any" },
+  { value: 200e6, label: "200M" },
+  { value: 500e6, label: "500M" },
+  { value: 1e9, label: "1B" },
+  { value: 10e9, label: "10B" },
+] as const;
 const ROW_H = 30; // fixed data-row height (px) — required for windowed rendering
 const OVERSCAN = 12;
 
@@ -68,6 +75,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
   const [sector, setSector] = useState<string>("All");
   const [industry, setIndustry] = useState<string>("All");
   const [minRS, setMinRS] = useState<number>(0);
+  const [minMktCap, setMinMktCap] = useState<number>(200e6);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<StockSortKey>("rsPercentile");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -114,6 +122,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
     if (sector !== "All") items = items.filter(s => s.sector === sector);
     if (industry !== "All") items = items.filter(s => s.industry === industry);
     if (minRS > 0) items = items.filter(s => s.rsPercentile >= minRS);
+    if (minMktCap > 0) items = items.filter(s => s.marketCap !== null && s.marketCap >= minMktCap);
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toUpperCase();
       items = items.filter(s => s.ticker.includes(q));
@@ -129,7 +138,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
       return sortDir === "asc" ? an - bn : bn - an;
     });
     return sorted;
-  }, [data, sector, industry, minRS, searchQuery, sortKey, sortDir]);
+  }, [data, sector, industry, minRS, minMktCap, searchQuery, sortKey, sortDir]);
 
   // Industry percentile chip for the selected industry (flat view)
   const selectedIndustryMeta = useMemo(() => {
@@ -176,10 +185,13 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
     const members: RSStock[] = [];
     for (const t of detailIndustry.tickers) {
       const s = tickerMap.get(t);
-      if (s && (minRS === 0 || s.rsPercentile >= minRS)) members.push(s);
+      if (!s) continue;
+      if (minRS > 0 && s.rsPercentile < minRS) continue;
+      if (minMktCap > 0 && (s.marketCap === null || s.marketCap < minMktCap)) continue;
+      members.push(s);
     }
     return members;
-  }, [detailIndustry, tickerMap, minRS]);
+  }, [detailIndustry, tickerMap, minRS, minMktCap]);
 
   // Keyboard navigation on the rail
   const railRef = useRef<HTMLDivElement>(null);
@@ -260,7 +272,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
         className="rounded-lg border p-3 glass-panel"
         style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
       >
-        <div className="flex flex-wrap items-center gap-3 min-h-[1.75rem]">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 min-h-[1.75rem]">
           {universeSwitch}
 
           {/* View: flat stock list vs industry groups */}
@@ -292,7 +304,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Sector</span>
             <Select value={sector} onValueChange={handleSectorChange}>
-              <SelectTrigger className="h-7 w-[170px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-sector">
+              <SelectTrigger className="h-7 w-[140px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-sector">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -309,7 +321,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Industry</span>
             <Select value={industry} onValueChange={setIndustry}>
-              <SelectTrigger className="h-7 w-[230px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-industry">
+              <SelectTrigger className="h-7 w-[190px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-industry">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -348,8 +360,29 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
             </div>
           </div>
 
+          {/* Min market cap */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Mkt Cap ≥</span>
+            <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
+              {MKT_CAP_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setMinMktCap(value)}
+                  className={`px-2 py-1 text-[11px] font-medium transition-all${minMktCap === value ? " seg-active" : ""}`}
+                  style={{
+                    background: minMktCap === value ? "var(--terminal-blue)" : "transparent",
+                    color: minMktCap === value ? "#fff" : "var(--terminal-dim)",
+                  }}
+                  data-testid={`min-mktcap-${value}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Search */}
-          <div className="flex items-center gap-1.5 basis-full md:basis-auto md:flex-1 md:min-w-[120px]">
+          <div className="flex items-center gap-1.5 basis-full md:basis-auto md:flex-1 md:min-w-[90px]">
             <div
               className="flex items-center gap-1.5 px-2 py-1 rounded flex-1"
               style={{ background: "var(--overlay-subtle)", border: "1px solid var(--terminal-border)" }}
@@ -431,7 +464,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           detail={detailIndustry}
           members={detailMembers}
           totalIndustries={data?.industries.length ?? 0}
-          minRS={minRS}
+          filtersActive={minRS > 0 || minMktCap > 0}
         />
       ) : (
         <StocksTable rows={filtered} SortHeader={SortHeader} />
@@ -549,7 +582,7 @@ function StockRow({ s }: { s: RSStock }) {
 
 /* ──────────────────────── Industries master-detail ─────────────────────── */
 
-function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSelect, detail, members, totalIndustries, minRS }: {
+function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSelect, detail, members, totalIndustries, filtersActive }: {
   rail: RSIndustry[];
   railRef: React.RefObject<HTMLDivElement>;
   onRailKeyDown: (e: React.KeyboardEvent) => void;
@@ -558,7 +591,7 @@ function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSele
   detail: RSIndustry | null;
   members: RSStock[];
   totalIndustries: number;
-  minRS: number;
+  filtersActive: boolean;
 }) {
   if (rail.length === 0) {
     return (
@@ -631,14 +664,14 @@ function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSele
               RS {detail.rsPercentile}
             </span>
             <span className="text-[10px] ml-auto" style={{ color: "var(--text-muted)" }}>
-              {members.length}{minRS > 0 ? ` of ${detail.tickers.length}` : ""} members
+              {members.length}{filtersActive ? ` of ${detail.tickers.length}` : ""} members
             </span>
           </div>
 
           {members.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                No members{minRS > 0 ? ` with RS ≥ ${minRS}` : " in today's dataset"}
+                No members{filtersActive ? " match the active filters" : " in today's dataset"}
               </p>
             </div>
           ) : (
