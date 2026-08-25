@@ -13,7 +13,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from "react";
 import type { RSStocksResponse, RSStock, RSIndustry } from "@shared/schema";
-import { Search, X, Download, ArrowUpDown, BarChart3, Activity, List, Layers } from "lucide-react";
+import { Search, X, Download, ArrowUpDown, BarChart3, Activity, List, Layers, ChevronRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useScrollHint } from "@/hooks/useScrollHint";
 import {
   Select,
   SelectContent,
@@ -483,7 +485,7 @@ function StocksTable({ rows, SortHeader }: {
   rows: RSStock[];
   SortHeader: (p: { label: string; sortKeyVal: StockSortKey; className?: string; align?: "left" | "right" }) => JSX.Element;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [range, setRange] = useState<[number, number]>([0, 60]);
 
   const recompute = useCallback(() => {
@@ -495,6 +497,14 @@ function StocksTable({ rows, SortHeader }: {
   }, [rows.length]);
 
   useEffect(() => { recompute(); }, [recompute]);
+
+  // Same viewport scrolls vertically (windowing) and horizontally (all columns
+  // stay visible on narrow screens); the hint nudges the horizontal affordance.
+  const scrollHintRef = useScrollHint<HTMLDivElement>();
+  const setScrollRef = useCallback((el: HTMLDivElement | null) => {
+    scrollRef.current = el;
+    scrollHintRef(el);
+  }, [scrollHintRef]);
 
   const [start, end] = range;
   const slice = rows.slice(start, end);
@@ -517,26 +527,26 @@ function StocksTable({ rows, SortHeader }: {
       style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
     >
       <div
-        ref={scrollRef}
+        ref={setScrollRef}
         onScroll={recompute}
         className="overflow-auto rs-table-viewport"
         style={{ maxHeight: "calc(100vh - 210px)", minHeight: "360px" }}
         data-testid="stock-rs-table"
       >
-        <table className="w-full text-[11px]">
+        <table className="w-full text-[11px] whitespace-nowrap">
           <thead className="rs-sticky-head">
             <tr>
               <SortHeader label="Rank" sortKeyVal="rank" />
               <SortHeader label="Ticker" sortKeyVal="ticker" />
-              <SortHeader label="Industry" sortKeyVal="industry" className="hidden md:table-cell" />
+              <SortHeader label="Industry" sortKeyVal="industry" />
               <SortHeader label="RS" sortKeyVal="rsPercentile" align="right" />
-              <SortHeader label="1M" sortKeyVal="rs1M" align="right" className="hidden lg:table-cell" />
-              <SortHeader label="3M" sortKeyVal="rs3M" align="right" className="hidden lg:table-cell" />
-              <SortHeader label="6M" sortKeyVal="rs6M" align="right" className="hidden lg:table-cell" />
+              <SortHeader label="1M" sortKeyVal="rs1M" align="right" />
+              <SortHeader label="3M" sortKeyVal="rs3M" align="right" />
+              <SortHeader label="6M" sortKeyVal="rs6M" align="right" />
               <SortHeader label="Price" sortKeyVal="price" align="right" />
-              <SortHeader label="% 52WH" sortKeyVal="pctFrom52WkHigh" align="right" className="hidden md:table-cell" />
-              <SortHeader label="Mkt Cap" sortKeyVal="marketCap" align="right" className="hidden md:table-cell" />
-              <SortHeader label="Vol 30D" sortKeyVal="avgVol30" align="right" className="hidden lg:table-cell" />
+              <SortHeader label="% 52WH" sortKeyVal="pctFrom52WkHigh" align="right" />
+              <SortHeader label="Mkt Cap" sortKeyVal="marketCap" align="right" />
+              <SortHeader label="Vol 30D" sortKeyVal="avgVol30" align="right" />
             </tr>
           </thead>
           <tbody>
@@ -561,21 +571,21 @@ function StockRow({ s }: { s: RSStock }) {
       <td className="px-3">
         <span className="font-bold" style={{ color: "var(--text-primary)" }}>{s.ticker}</span>
       </td>
-      <td className="px-3 hidden md:table-cell truncate max-w-[220px]" style={{ color: "var(--text-secondary)" }}>{s.industry}</td>
+      <td className="px-3 truncate max-w-[220px]" style={{ color: "var(--text-secondary)" }}>{s.industry}</td>
       <td className="px-3 text-right">
         <span className="font-bold tabular-nums" style={{ color: rsRatingColor(s.rsPercentile) }}>{s.rsPercentile}</span>
       </td>
-      <td className="px-3 text-right tabular-nums hidden lg:table-cell" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs1M)}</td>
-      <td className="px-3 text-right tabular-nums hidden lg:table-cell" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs3M)}</td>
-      <td className="px-3 text-right tabular-nums hidden lg:table-cell" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs6M)}</td>
+      <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs1M)}</td>
+      <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs3M)}</td>
+      <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs6M)}</td>
       <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-primary)" }}>{formatNullable(s.price, 2)}</td>
-      <td className="px-3 text-right tabular-nums hidden md:table-cell">
+      <td className="px-3 text-right tabular-nums">
         <span style={{ color: s.pctFrom52WkHigh !== null && s.pctFrom52WkHigh >= -5 ? "var(--terminal-green)" : "var(--text-secondary)" }}>
           {s.pctFrom52WkHigh === null ? "—" : `${s.pctFrom52WkHigh > 0 ? "+" : ""}${s.pctFrom52WkHigh.toFixed(1)}%`}
         </span>
       </td>
-      <td className="px-3 text-right tabular-nums hidden md:table-cell" style={{ color: "var(--text-secondary)" }}>{formatMarketCap(s.marketCap)}</td>
-      <td className="px-3 text-right tabular-nums hidden lg:table-cell" style={{ color: "var(--text-secondary)" }}>{formatVolume(s.avgVol30)}</td>
+      <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatMarketCap(s.marketCap)}</td>
+      <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatVolume(s.avgVol30)}</td>
     </tr>
   );
 }
@@ -593,6 +603,36 @@ function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSele
   totalIndustries: number;
   filtersActive: boolean;
 }) {
+  // Desktop shows a side-by-side master-detail; mobile can't fit that, so it
+  // collapses to an accordion where the tapped group expands its members
+  // inline right beneath the row. Tapping the open row again collapses it.
+  const isMobile = useIsMobile();
+  const [openIndustry, setOpenIndustry] = useState<string | null>(null);
+
+  // After expanding on mobile, ease the row up so its members are visible
+  // instead of unfolding below the fold.
+  const selectedRowRef = useRef<HTMLDivElement>(null);
+  const scrollPendingRef = useRef(false);
+  const memberHintRef = useScrollHint<HTMLDivElement>();
+
+  const handleToggle = useCallback((name: string) => {
+    setOpenIndustry((prev) => {
+      const next = prev === name ? null : name;
+      if (next) {
+        onSelect(next); // load this group's members in the parent
+        scrollPendingRef.current = true;
+      }
+      return next;
+    });
+  }, [onSelect]);
+
+  useEffect(() => {
+    if (scrollPendingRef.current && isMobile && selectedRowRef.current) {
+      selectedRowRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    scrollPendingRef.current = false;
+  }, [openIndustry, isMobile]);
+
   if (rail.length === 0) {
     return (
       <div
@@ -601,6 +641,71 @@ function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSele
       >
         <BarChart3 className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--text-faint)" }} />
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>No industries match your filter</p>
+      </div>
+    );
+  }
+
+  // ── Mobile: accordion — each group expands its members inline beneath it ──
+  if (isMobile) {
+    return (
+      <div
+        role="listbox"
+        aria-label="Industry groups ranked by relative strength"
+        className="rounded-lg border overflow-hidden glass-panel"
+        style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
+      >
+        {rail.map((ind) => {
+          const isOpen = openIndustry === ind.industry;
+          const expanded = isOpen && detail?.industry === ind.industry;
+          return (
+            <div key={ind.industry} ref={isOpen ? selectedRowRef : undefined} className="scroll-mt-2">
+              <button
+                role="option"
+                aria-selected={isOpen}
+                aria-expanded={isOpen}
+                data-industry={ind.industry}
+                onClick={() => handleToggle(ind.industry)}
+                className={`rs-rail-row w-full text-left flex items-center gap-2 px-2.5 text-[11px]${isOpen ? " rs-rail-row-selected" : ""}`}
+                title={`${ind.industry} · ${ind.sector}`}
+                data-testid={`rail-${ind.industry}`}
+              >
+                <span className="w-6 flex-shrink-0 text-right tabular-nums" style={{ color: "var(--text-faint)" }}>{ind.rank}</span>
+                <ChevronRight
+                  className="w-3 h-3 flex-shrink-0 transition-transform duration-200"
+                  style={{ color: "var(--text-faint)", transform: isOpen ? "rotate(90deg)" : "none" }}
+                  aria-hidden="true"
+                />
+                <span className="flex-1 truncate" style={{ color: isOpen ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: isOpen ? 700 : 400 }}>
+                  {ind.industry}
+                </span>
+                <span className="w-9 flex-shrink-0 rs-rail-bar" aria-hidden="true">
+                  <span style={{ width: `${ind.rsPercentile}%`, background: rsRatingColor(ind.rsPercentile) }} />
+                </span>
+                <span className="w-5 flex-shrink-0 text-right font-bold tabular-nums" style={{ color: rsRatingColor(ind.rsPercentile) }}>
+                  {ind.rsPercentile}
+                </span>
+              </button>
+
+              {expanded && detail && (
+                <div
+                  className="rs-detail"
+                  style={{ borderBottom: "1px solid var(--terminal-border)", background: "var(--overlay-subtle)" }}
+                >
+                  <div className="px-3 py-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    {detail.sector} · rank #{detail.rank} of {totalIndustries} · {members.length}{filtersActive ? ` of ${detail.tickers.length}` : ""} members
+                  </div>
+                  {members.length === 0 ? (
+                    <IndustryEmptyState filtersActive={filtersActive} />
+                  ) : (
+                    <div className="overflow-x-auto" ref={memberHintRef}>
+                      <MemberTable members={members} stickyHead={false} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -617,8 +722,8 @@ function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSele
         aria-label="Industry groups ranked by relative strength"
         tabIndex={0}
         onKeyDown={onRailKeyDown}
-        className="overflow-y-auto outline-none rs-rail max-h-[280px] md:max-h-none"
-        style={{ borderRight: "1px solid var(--terminal-border)", maxHeight: "calc(100vh - 210px)" }}
+        className="overflow-y-auto outline-none rs-rail max-h-[280px] md:max-h-[calc(100vh_-_210px)]"
+        style={{ borderRight: "1px solid var(--terminal-border)" }}
       >
         {rail.map((ind) => {
           const isSel = ind.industry === selected;
@@ -669,54 +774,72 @@ function IndustriesMasterDetail({ rail, railRef, onRailKeyDown, selected, onSele
           </div>
 
           {members.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                No members{filtersActive ? " match the active filters" : " in today's dataset"}
-              </p>
-            </div>
+            <IndustryEmptyState filtersActive={filtersActive} />
           ) : (
             <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 256px)" }}>
-              <table className="w-full text-[11px]">
-                <thead className="rs-sticky-head">
-                  <tr>
-                    <th className="px-3 py-1.5 text-left text-[10px] tracking-wider uppercase" style={thStyle}>Ticker</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>RS</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase hidden lg:table-cell" style={thStyle}>1M</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase hidden lg:table-cell" style={thStyle}>6M</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>Price</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase hidden md:table-cell" style={thStyle}>% 52WH</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase hidden md:table-cell" style={thStyle}>Mkt Cap</th>
-                    <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase hidden lg:table-cell" style={thStyle}>Vol 30D</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {members.map((s) => (
-                    <tr
-                      key={s.ticker}
-                      className="rs-data-row transition-colors"
-                      style={{ height: ROW_H, borderBottom: "1px solid var(--terminal-border)" }}
-                      data-testid={`member-row-${s.ticker}`}
-                    >
-                      <td className="px-3"><span className="font-bold" style={{ color: "var(--text-primary)" }}>{s.ticker}</span></td>
-                      <td className="px-3 text-right"><span className="font-bold tabular-nums" style={{ color: rsRatingColor(s.rsPercentile) }}>{s.rsPercentile}</span></td>
-                      <td className="px-3 text-right tabular-nums hidden lg:table-cell" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs1M)}</td>
-                      <td className="px-3 text-right tabular-nums hidden lg:table-cell" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs6M)}</td>
-                      <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-primary)" }}>{formatNullable(s.price, 2)}</td>
-                      <td className="px-3 text-right tabular-nums hidden md:table-cell">
-                        <span style={{ color: s.pctFrom52WkHigh !== null && s.pctFrom52WkHigh >= -5 ? "var(--terminal-green)" : "var(--text-secondary)" }}>
-                          {s.pctFrom52WkHigh === null ? "—" : `${s.pctFrom52WkHigh > 0 ? "+" : ""}${s.pctFrom52WkHigh.toFixed(1)}%`}
-                        </span>
-                      </td>
-                      <td className="px-3 text-right tabular-nums hidden md:table-cell" style={{ color: "var(--text-secondary)" }}>{formatMarketCap(s.marketCap)}</td>
-                      <td className="px-3 text-right tabular-nums hidden lg:table-cell" style={{ color: "var(--text-secondary)" }}>{formatVolume(s.avgVol30)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <MemberTable members={members} />
             </div>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Empty-state copy shared by desktop detail and mobile accordion. */
+function IndustryEmptyState({ filtersActive }: { filtersActive: boolean }) {
+  return (
+    <div className="p-8 text-center">
+      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+        No members{filtersActive ? " match the active filters" : " in today's dataset"}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Member roster for one industry. Sticky header on desktop (scrolls inside a
+ * fixed-height viewport); on mobile the accordion expands inline in page flow,
+ * so the header is non-sticky to avoid overlapping the row above.
+ */
+function MemberTable({ members, stickyHead = true }: { members: RSStock[]; stickyHead?: boolean }) {
+  return (
+    <table className="w-full text-[11px] whitespace-nowrap">
+      <thead className={stickyHead ? "rs-sticky-head" : undefined}>
+        <tr>
+          <th className="px-3 py-1.5 text-left text-[10px] tracking-wider uppercase" style={thStyle}>Ticker</th>
+          <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>RS</th>
+          <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>1M</th>
+          <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>6M</th>
+          <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>Price</th>
+          <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>% 52WH</th>
+          <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>Mkt Cap</th>
+          <th className="px-3 py-1.5 text-right text-[10px] tracking-wider uppercase" style={thStyle}>Vol 30D</th>
+        </tr>
+      </thead>
+      <tbody>
+        {members.map((s) => (
+          <tr
+            key={s.ticker}
+            className="rs-data-row transition-colors"
+            style={{ height: ROW_H, borderBottom: "1px solid var(--terminal-border)" }}
+            data-testid={`member-row-${s.ticker}`}
+          >
+            <td className="px-3"><span className="font-bold" style={{ color: "var(--text-primary)" }}>{s.ticker}</span></td>
+            <td className="px-3 text-right"><span className="font-bold tabular-nums" style={{ color: rsRatingColor(s.rsPercentile) }}>{s.rsPercentile}</span></td>
+            <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs1M)}</td>
+            <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatNullable(s.rs6M)}</td>
+            <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-primary)" }}>{formatNullable(s.price, 2)}</td>
+            <td className="px-3 text-right tabular-nums">
+              <span style={{ color: s.pctFrom52WkHigh !== null && s.pctFrom52WkHigh >= -5 ? "var(--terminal-green)" : "var(--text-secondary)" }}>
+                {s.pctFrom52WkHigh === null ? "—" : `${s.pctFrom52WkHigh > 0 ? "+" : ""}${s.pctFrom52WkHigh.toFixed(1)}%`}
+              </span>
+            </td>
+            <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatMarketCap(s.marketCap)}</td>
+            <td className="px-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>{formatVolume(s.avgVol30)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
