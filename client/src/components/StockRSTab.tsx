@@ -35,6 +35,17 @@ const MKT_CAP_OPTIONS = [
   { value: 1e9, label: "1B" },
   { value: 10e9, label: "10B" },
 ] as const;
+// Min 30-day average daily volume (shares). Default is 500K to match the 200M
+// market-cap default: a 1M-share floor would delete ~82% of the 200M–1B small
+// caps that cap floor is meant to admit (share turnover scales with price, so
+// small caps rarely clear 1M shares). 500K still means real liquidity (~$5M/day
+// at a $10 price). Bump to 1M when pairing with a larger cap floor (1B+).
+const VOL_OPTIONS = [
+  { value: 0, label: "Any" },
+  { value: 500e3, label: "500K" },
+  { value: 1e6, label: "1M" },
+  { value: 5e6, label: "5M" },
+] as const;
 const ROW_H = 30; // fixed data-row height (px) — required for windowed rendering
 const OVERSCAN = 12;
 
@@ -78,6 +89,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
   const [industry, setIndustry] = useState<string>("All");
   const [minRS, setMinRS] = useState<number>(0);
   const [minMktCap, setMinMktCap] = useState<number>(200e6);
+  const [minVol, setMinVol] = useState<number>(5e5);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<StockSortKey>("rsPercentile");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -125,6 +137,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
     if (industry !== "All") items = items.filter(s => s.industry === industry);
     if (minRS > 0) items = items.filter(s => s.rsPercentile >= minRS);
     if (minMktCap > 0) items = items.filter(s => s.marketCap !== null && s.marketCap >= minMktCap);
+    if (minVol > 0) items = items.filter(s => s.avgVol30 !== null && s.avgVol30 >= minVol);
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toUpperCase();
       items = items.filter(s => s.ticker.includes(q));
@@ -140,7 +153,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
       return sortDir === "asc" ? an - bn : bn - an;
     });
     return sorted;
-  }, [data, sector, industry, minRS, minMktCap, searchQuery, sortKey, sortDir]);
+  }, [data, sector, industry, minRS, minMktCap, minVol, searchQuery, sortKey, sortDir]);
 
   // Industry percentile chip for the selected industry (flat view)
   const selectedIndustryMeta = useMemo(() => {
@@ -190,10 +203,11 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
       if (!s) continue;
       if (minRS > 0 && s.rsPercentile < minRS) continue;
       if (minMktCap > 0 && (s.marketCap === null || s.marketCap < minMktCap)) continue;
+      if (minVol > 0 && (s.avgVol30 === null || s.avgVol30 < minVol)) continue;
       members.push(s);
     }
     return members;
-  }, [detailIndustry, tickerMap, minRS, minMktCap]);
+  }, [detailIndustry, tickerMap, minRS, minMktCap, minVol]);
 
   // Keyboard navigation on the rail
   const railRef = useRef<HTMLDivElement>(null);
@@ -274,7 +288,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
         className="rounded-lg border p-3 glass-panel"
         style={{ background: "var(--terminal-surface)", borderColor: "var(--terminal-border)" }}
       >
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 min-h-[1.75rem]">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 min-h-[1.75rem]">
           {universeSwitch}
 
           {/* View: flat stock list vs industry groups */}
@@ -288,7 +302,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
                 <button
                   key={id}
                   onClick={() => setView(id)}
-                  className={`px-2 py-1 text-[11px] font-medium transition-all flex items-center gap-1${view === id ? " seg-active" : ""}`}
+                  className={`px-1.5 py-1 text-[11px] font-medium transition-all flex items-center gap-1${view === id ? " seg-active" : ""}`}
                   style={{
                     background: view === id ? "var(--terminal-blue)" : "transparent",
                     color: view === id ? "#fff" : "var(--terminal-dim)",
@@ -306,7 +320,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Sector</span>
             <Select value={sector} onValueChange={handleSectorChange}>
-              <SelectTrigger className="h-7 w-[140px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-sector">
+              <SelectTrigger className="h-7 w-[116px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-sector">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -323,7 +337,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Industry</span>
             <Select value={industry} onValueChange={setIndustry}>
-              <SelectTrigger className="h-7 w-[190px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-industry">
+              <SelectTrigger className="h-7 w-[148px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-industry">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -349,7 +363,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
                 <button
                   key={v}
                   onClick={() => setMinRS(v)}
-                  className={`px-2 py-1 text-[11px] font-medium transition-all${minRS === v ? " seg-active" : ""}`}
+                  className={`px-1.5 py-1 text-[11px] font-medium transition-all${minRS === v ? " seg-active" : ""}`}
                   style={{
                     background: minRS === v ? "var(--terminal-blue)" : "transparent",
                     color: minRS === v ? "#fff" : "var(--terminal-dim)",
@@ -370,7 +384,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
                 <button
                   key={value}
                   onClick={() => setMinMktCap(value)}
-                  className={`px-2 py-1 text-[11px] font-medium transition-all${minMktCap === value ? " seg-active" : ""}`}
+                  className={`px-1.5 py-1 text-[11px] font-medium transition-all${minMktCap === value ? " seg-active" : ""}`}
                   style={{
                     background: minMktCap === value ? "var(--terminal-blue)" : "transparent",
                     color: minMktCap === value ? "#fff" : "var(--terminal-dim)",
@@ -383,8 +397,29 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
             </div>
           </div>
 
+          {/* Min avg daily volume */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Vol ≥</span>
+            <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
+              {VOL_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setMinVol(value)}
+                  className={`px-1.5 py-1 text-[11px] font-medium transition-all${minVol === value ? " seg-active" : ""}`}
+                  style={{
+                    background: minVol === value ? "var(--terminal-blue)" : "transparent",
+                    color: minVol === value ? "#fff" : "var(--terminal-dim)",
+                  }}
+                  data-testid={`min-vol-${value}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Search */}
-          <div className="flex items-center gap-1.5 basis-full md:basis-auto md:flex-1 md:min-w-[90px]">
+          <div className="flex items-center gap-1.5 basis-full md:basis-0 md:flex-1 md:min-w-[120px]">
             <div
               className="flex items-center gap-1.5 px-2 py-1 rounded flex-1"
               style={{ background: "var(--overlay-subtle)", border: "1px solid var(--terminal-border)" }}
@@ -466,7 +501,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           detail={detailIndustry}
           members={detailMembers}
           totalIndustries={data?.industries.length ?? 0}
-          filtersActive={minRS > 0 || minMktCap > 0}
+          filtersActive={minRS > 0 || minMktCap > 0 || minVol > 0}
         />
       ) : (
         <StocksTable rows={filtered} SortHeader={SortHeader} />

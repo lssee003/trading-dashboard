@@ -276,7 +276,7 @@ export default function RelativeStrength() {
             key={tab.id}
             onClick={() => setPageTab(tab.id)}
             title={tab.hint}
-            className={`px-2 py-1 text-[11px] font-medium transition-all${pageTab === tab.id ? " seg-active" : ""}`}
+            className={`px-1.5 py-1 text-[11px] font-medium transition-all${pageTab === tab.id ? " seg-active" : ""}`}
             style={{
               background: pageTab === tab.id ? "var(--terminal-blue)" : "transparent",
               color: pageTab === tab.id ? "#fff" : "var(--terminal-dim)",
