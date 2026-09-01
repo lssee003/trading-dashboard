@@ -1510,10 +1510,71 @@
   mix-blend-mode: normal;
 }
 
+/* ── Mobile: compact electrified "AI" launcher ──
+   The desktop pill collapses to a small "AI" chip. The bars glyph is dropped
+   (reads as a hamburger at chip size); the letters carry an occasional electric
+   surge instead, so the entry point catches the eye rather than hiding. */
+.ai-spark {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--terminal-cyan);
+  text-shadow:
+    0 0 4px color-mix(in oklab, var(--terminal-cyan) 60%, transparent),
+    0 0 10px color-mix(in oklab, var(--terminal-cyan) 28%, transparent);
+  animation: ai-spark-flicker 5.5s steps(1, end) infinite;
+}
+
+/* Snapped states (steps) read as an electric flicker, not a smooth fade:
+   two brief stutters and one bright surge per cycle. */
+@keyframes ai-spark-flicker {
+  0%, 38%, 45%, 66%, 100% {
+    opacity: 1;
+    text-shadow:
+      0 0 4px color-mix(in oklab, var(--terminal-cyan) 60%, transparent),
+      0 0 10px color-mix(in oklab, var(--terminal-cyan) 28%, transparent);
+  }
+  39% { opacity: 0.4;  text-shadow: none; }                 /* blink out */
+  42% { opacity: 1;                                          /* surge */
+        text-shadow:
+          0 0 12px var(--terminal-cyan),
+          0 0 22px color-mix(in oklab, var(--terminal-cyan) 55%, transparent); }
+  44% { opacity: 0.7; }
+  64% { opacity: 0.45; text-shadow: none; }                 /* second stutter */
+}
+
+@media (max-width: 639px) {
+  /* The bars glyph carries display:block in its base rule (unlayered, so it
+     beats Tailwind's `hidden`); force it off here so mobile shows only "AI". */
+  .ai-stack-icon { display: none; }
+  .ai-stack-link {
+    padding: 4px 9px;
+    border-color: color-mix(in oklab, var(--terminal-cyan) 48%, var(--terminal-border));
+    background: color-mix(in oklab, var(--terminal-cyan) 8%, transparent);
+    animation: ai-chip-charge 5.5s ease-in-out infinite;
+  }
+  .ai-stack-link:active {
+    border-color: var(--terminal-cyan);
+    background: color-mix(in oklab, var(--terminal-cyan) 16%, transparent);
+  }
+}
+
+/* Glow pulse on the chip, timed to the letters' surge for a single "zap". */
+@keyframes ai-chip-charge {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  42%      { box-shadow: 0 0 9px 0 color-mix(in oklab, var(--terminal-cyan) 45%, transparent); }
+  55%      { box-shadow: 0 0 3px 0 color-mix(in oklab, var(--terminal-cyan) 18%, transparent); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ai-stack-icon .bar { transition: none !important; transform: none !important; }
   .ai-stack-link::after { transition: none !important; }
   .ai-stack-arrow { transition: none !important; transform: none !important; }
+  /* Electric launcher settles to a steady glow — no flicker, no pulse. */
+  .ai-spark { animation: none !important; }
+  .ai-stack-link { animation: none !important; }
   ::view-transition-old(ai-stack-morph),
   ::view-transition-new(ai-stack-morph) {
     animation: none !important;

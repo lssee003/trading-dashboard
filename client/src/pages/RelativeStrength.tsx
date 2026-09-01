@@ -50,9 +50,40 @@ function formatPulse(pulse: number | null): string {
 
 const RS_PULSE_TOOLTIP = "RS Pulse shows where today's RS ranks within the selected window's range. >80% = momentum still accelerating.";
 
+/**
+ * AI Stack launcher. One element, two faces via breakpoint: the full
+ * "AI STACK ↗" pill on desktop, a compact electrified "AI" chip on mobile.
+ * Mounted in the header (desktop) and in the toolbar's search row (mobile),
+ * each wrapped so only its breakpoint's copy is ever visible.
+ */
+function AIStackLink({ testId }: { testId: string }) {
+  const navigate = useViewTransitionNavigate();
+  return (
+    <a
+      href="#/ai-stack"
+      onClick={(e) => { e.preventDefault(); navigate("/ai-stack"); }}
+      className="ai-stack-link vt-ai-stack"
+      title="Open the AI infrastructure stack — 14-layer reference taxonomy"
+      data-testid={testId}
+      aria-label="Open AI infrastructure stack reference"
+    >
+      {/* Desktop: 3-bar glyph + full label. Hidden on mobile — the bars
+         read as a hamburger at chip size, so mobile gets the "AI" wordmark. */}
+      <svg className="ai-stack-icon hidden sm:block" width="12" height="12" viewBox="0 0 14 14" aria-hidden="true">
+        <rect className="bar bar-3" x="2" y="10.5" width="10" height="1.3" rx="0.3" />
+        <rect className="bar bar-2" x="2" y="6.5"  width="10" height="1.3" rx="0.3" />
+        <rect className="bar bar-1" x="2" y="2.5"  width="10" height="1.3" rx="0.3" />
+      </svg>
+      <span className="hidden sm:inline">AI Stack</span>
+      <ArrowUpRight className="ai-stack-arrow hidden sm:block" width={12} height={12} />
+      {/* Mobile: compact electrified "AI" wordmark */}
+      <span className="ai-spark sm:hidden" aria-hidden="true">AI</span>
+    </a>
+  );
+}
+
 export default function RelativeStrength() {
   const rsTableRef = useScrollHint<HTMLDivElement>();
-  const navigateWithTransition = useViewTransitionNavigate();
 
   // Controls
   const [benchmark, setBenchmark] = useState("SPY");
@@ -336,6 +367,12 @@ export default function RelativeStrength() {
         }
         actions={
           <>
+            {/* AI Stack (desktop): a lateral reference surface for RS, launched
+               from the header utility zone. On mobile it moves into the toolbar
+               search row — see below — so it doesn't overflow the header. */}
+            <div className="hidden sm:flex items-center">
+              <AIStackLink testId="link-ai-stack" />
+            </div>
             <ThemeToggle />
             <button
               onClick={() => refetch()}
@@ -352,7 +389,16 @@ export default function RelativeStrength() {
       <main className="flex-1 overflow-y-auto p-3 md:p-4">
         <div className="max-w-[1600px] mx-auto space-y-3">
 
-          {pageTab === "stocks" && <StockRSTab universeSwitch={universeSwitch} />}
+          {pageTab === "stocks" && (
+            <StockRSTab
+              universeSwitch={universeSwitch}
+              aiStackLauncher={
+                <div className="sm:hidden flex items-center flex-shrink-0">
+                  <AIStackLink testId="link-ai-stack-mobile-stk" />
+                </div>
+              }
+            />
+          )}
 
           {pageTab === "etf" && (<>
 
@@ -405,6 +451,9 @@ export default function RelativeStrength() {
                   </div>
                 </div>
               </div>
+
+              {/* Divider: mode selectors (Universe · View) | refinements (Bench · Window · Filter · Search) */}
+              <span aria-hidden="true" className="hidden md:block self-stretch w-px mx-2" style={{ background: "var(--terminal-border)" }} />
 
               {/* Mobile: collapsed Bench/Window/Filter trigger */}
               <button
@@ -540,6 +589,10 @@ export default function RelativeStrength() {
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
+                </div>
+                {/* Mobile: AI Stack shares the search row (out of the header) */}
+                <div className="sm:hidden flex items-center flex-shrink-0">
+                  <AIStackLink testId="link-ai-stack-mobile" />
                 </div>
               </div>
             </div>
@@ -732,22 +785,6 @@ export default function RelativeStrength() {
                 )}
               </span>
               <span className="flex items-center gap-3 flex-shrink-0">
-                <a
-                  href="#/ai-stack"
-                  onClick={(e) => { e.preventDefault(); navigateWithTransition("/ai-stack"); }}
-                  className="ai-stack-link vt-ai-stack"
-                  title="Open the AI infrastructure stack — 14-layer reference taxonomy"
-                  data-testid="link-ai-stack"
-                  aria-label="Open AI infrastructure stack reference"
-                >
-                  <svg className="ai-stack-icon" width="12" height="12" viewBox="0 0 14 14" aria-hidden="true">
-                    <rect className="bar bar-3" x="2" y="10.5" width="10" height="1.3" rx="0.3" />
-                    <rect className="bar bar-2" x="2" y="6.5"  width="10" height="1.3" rx="0.3" />
-                    <rect className="bar bar-1" x="2" y="2.5"  width="10" height="1.3" rx="0.3" />
-                  </svg>
-                  <span>AI Stack</span>
-                  <ArrowUpRight className="ai-stack-arrow" width={12} height={12} />
-                </a>
                 <button
                   onClick={handleExport}
                   className="p-1 rounded transition-colors opacity-60 hover:opacity-100"

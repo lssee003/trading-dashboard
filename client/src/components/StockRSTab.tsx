@@ -13,7 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from "react";
 import type { RSStocksResponse, RSStock, RSIndustry } from "@shared/schema";
-import { Search, X, Download, ArrowUpDown, BarChart3, Activity, List, Layers, ChevronRight } from "lucide-react";
+import { Search, X, Download, ArrowUpDown, BarChart3, Activity, List, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScrollHint } from "@/hooks/useScrollHint";
 import {
@@ -83,7 +83,7 @@ const selectTriggerStyle = {
 
 const thStyle = { color: "var(--text-muted)", borderBottom: "1px solid var(--terminal-border)" } as const;
 
-export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
+export function StockRSTab({ universeSwitch, aiStackLauncher }: { universeSwitch?: ReactNode; aiStackLauncher?: ReactNode }) {
   const [view, setView] = useState<"stocks" | "industries">("stocks");
   const [sector, setSector] = useState<string>("All");
   const [industry, setIndustry] = useState<string>("All");
@@ -94,6 +94,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
   const [sortKey, setSortKey] = useState<StockSortKey>("rsPercentile");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery<RSStocksResponse>({
     queryKey: ["/api/rs-stocks"],
@@ -281,6 +282,9 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
     );
   }
 
+  const capLabel = MKT_CAP_OPTIONS.find((o) => o.value === minMktCap)?.label ?? "Any";
+  const volLabel = VOL_OPTIONS.find((o) => o.value === minVol)?.label ?? "Any";
+
   return (
     <>
       {/* ─── Controls ─── */}
@@ -316,8 +320,42 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
             </div>
           </div>
 
+          {/* Divider: mode selectors (Universe · View) | refinements (Sector · Industry · RS · Cap · Vol · Search) */}
+          <span aria-hidden="true" className="hidden md:block self-stretch w-px mx-2" style={{ background: "var(--terminal-border)" }} />
+
+          {/* Mobile: collapsed Sector/Industry/RS/Cap/Vol trigger */}
+          <button
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            className={`md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors${mobileFiltersOpen ? " seg-active" : ""}`}
+            style={{
+              background: mobileFiltersOpen ? "var(--terminal-blue)" : "transparent",
+              color: mobileFiltersOpen ? "#fff" : "var(--text-primary)",
+              border: "1px solid var(--terminal-border)",
+            }}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="stock-mobile-filters"
+            data-testid="stock-button-mobile-filters"
+          >
+            <span
+              className="text-[10px] uppercase tracking-wider flex-shrink-0"
+              style={{ color: mobileFiltersOpen ? "rgba(255,255,255,0.7)" : "var(--text-muted)" }}
+            >
+              Filters
+            </span>
+            <span className="truncate max-w-[190px]" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {sector === "All" ? "All" : sector} · RS {minRS === 0 ? "All" : minRS} · {capLabel} · {volLabel}
+            </span>
+            <ChevronDown
+              className="w-3 h-3 flex-shrink-0"
+              style={{
+                transition: "transform 0.2s ease",
+                transform: mobileFiltersOpen ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            />
+          </button>
+
           {/* Sector */}
-          <div className="flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Sector</span>
             <Select value={sector} onValueChange={handleSectorChange}>
               <SelectTrigger className="h-7 w-[116px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-sector">
@@ -334,7 +372,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
 
           {/* Industry — ordered by industry RS rank (flat stock view only; the rail replaces it in industry view) */}
           {view === "stocks" && (
-          <div className="flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Industry</span>
             <Select value={industry} onValueChange={setIndustry}>
               <SelectTrigger className="h-7 w-[148px] rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-industry">
@@ -356,7 +394,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           )}
 
           {/* Min RS */}
-          <div className="flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>RS ≥</span>
             <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
               {RS_MIN_OPTIONS.map(v => (
@@ -377,7 +415,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           </div>
 
           {/* Min market cap */}
-          <div className="flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Mkt Cap ≥</span>
             <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
               {MKT_CAP_OPTIONS.map(({ value, label }) => (
@@ -398,7 +436,7 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
           </div>
 
           {/* Min avg daily volume */}
-          <div className="flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Vol ≥</span>
             <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--terminal-border)" }}>
               {VOL_OPTIONS.map(({ value, label }) => (
@@ -439,6 +477,114 @@ export function StockRSTab({ universeSwitch }: { universeSwitch?: ReactNode }) {
                   <X className="w-3 h-3" />
                 </button>
               )}
+            </div>
+            {/* Mobile: AI Stack shares the search row (out of the header) */}
+            {aiStackLauncher}
+          </div>
+
+          {/* Mobile: expandable filter panel — Sector / Industry / RS / Cap / Vol stacked */}
+          <div
+            id="stock-mobile-filters"
+            className="md:hidden overflow-hidden basis-full"
+            style={{
+              maxHeight: mobileFiltersOpen ? "420px" : "0px",
+              opacity: mobileFiltersOpen ? 1 : 0,
+              transition: "max-height 0.25s ease, opacity 0.2s ease",
+            }}
+          >
+            <div className="flex flex-col gap-2 pt-3 mt-1 border-t" style={{ borderColor: "var(--terminal-border)" }}>
+              {/* Sector */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider w-20 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Sector</span>
+                <Select value={sector} onValueChange={handleSectorChange}>
+                  <SelectTrigger className="h-8 flex-1 rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-sector-mobile">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All" className="text-[11px]">All Sectors</SelectItem>
+                    {sectors.map((s) => (
+                      <SelectItem key={s} value={s} className="text-[11px]">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Industry (flat stock view only) */}
+              {view === "stocks" && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider w-20 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Industry</span>
+                <Select value={industry} onValueChange={setIndustry}>
+                  <SelectTrigger className="h-8 flex-1 rounded text-[11px] px-2 py-1" style={selectTriggerStyle} data-testid="select-industry-mobile">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All" className="text-[11px]">All Industries</SelectItem>
+                    {industries.map((i) => (
+                      <SelectItem key={i.industry} value={i.industry} className="text-[11px]">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="font-bold tabular-nums" style={{ color: rsRatingColor(i.rsPercentile) }}>{i.rsPercentile}</span>
+                          {i.industry}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              )}
+
+              {/* Min RS */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider w-20 flex-shrink-0" style={{ color: "var(--text-muted)" }}>RS ≥</span>
+                <div className="flex rounded overflow-hidden flex-1" style={{ border: "1px solid var(--terminal-border)" }}>
+                  {RS_MIN_OPTIONS.map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setMinRS(v)}
+                      className={`flex-1 px-1.5 py-2 text-[11px] font-medium transition-all${minRS === v ? " seg-active" : ""}`}
+                      style={{ background: minRS === v ? "var(--terminal-blue)" : "transparent", color: minRS === v ? "#fff" : "var(--terminal-dim)" }}
+                      data-testid={`min-rs-mobile-${v}`}
+                    >
+                      {v === 0 ? "All" : v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Min market cap */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider w-20 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Mkt Cap ≥</span>
+                <div className="flex rounded overflow-hidden flex-1" style={{ border: "1px solid var(--terminal-border)" }}>
+                  {MKT_CAP_OPTIONS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setMinMktCap(value)}
+                      className={`flex-1 px-1.5 py-2 text-[11px] font-medium transition-all${minMktCap === value ? " seg-active" : ""}`}
+                      style={{ background: minMktCap === value ? "var(--terminal-blue)" : "transparent", color: minMktCap === value ? "#fff" : "var(--terminal-dim)" }}
+                      data-testid={`min-mktcap-mobile-${value}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Min avg daily volume */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider w-20 flex-shrink-0" style={{ color: "var(--text-muted)" }}>Vol ≥</span>
+                <div className="flex rounded overflow-hidden flex-1" style={{ border: "1px solid var(--terminal-border)" }}>
+                  {VOL_OPTIONS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setMinVol(value)}
+                      className={`flex-1 px-1.5 py-2 text-[11px] font-medium transition-all${minVol === value ? " seg-active" : ""}`}
+                      style={{ background: minVol === value ? "var(--terminal-blue)" : "transparent", color: minVol === value ? "#fff" : "var(--terminal-dim)" }}
+                      data-testid={`min-vol-mobile-${value}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
