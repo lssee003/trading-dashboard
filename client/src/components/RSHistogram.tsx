@@ -4,6 +4,12 @@ interface RSHistogramProps {
   data: number[];       // RS ratio series (1.0 = parity with benchmark)
   width?: number;
   height?: number;
+  /**
+   * Stretch the SVG to fill its parent (width/height become the internal
+   * viewBox coordinate space, not pixel dimensions). Used when the chart is a
+   * backdrop for a container whose height isn't known ahead of time.
+   */
+  fill?: boolean;
 }
 
 /**
@@ -11,7 +17,7 @@ interface RSHistogramProps {
  * Values above 1.0 = outperforming (green), below 1.0 = underperforming (red).
  * Renders as an inline SVG bar chart with a parity baseline.
  */
-export function RSHistogram({ data, width = 120, height = 28 }: RSHistogramProps) {
+export function RSHistogram({ data, width = 120, height = 28, fill = false }: RSHistogramProps) {
   const bars = useMemo(() => {
     if (data.length < 2) return [];
 
@@ -49,8 +55,12 @@ export function RSHistogram({ data, width = 120, height = 28 }: RSHistogramProps
     );
   }
 
+  const svgSizeProps = fill
+    ? { width: "100%", height: "100%", viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none" as const }
+    : { width, height };
+
   return (
-    <svg width={width} height={height} className="block">
+    <svg {...svgSizeProps} className="block">
       {/* Baseline at 1.0 */}
       <line
         x1={0}

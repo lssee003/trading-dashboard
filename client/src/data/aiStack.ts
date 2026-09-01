@@ -160,7 +160,7 @@ export const AI_STACK_DATA: AIStackLayer[] = [
       { ticker: "WDC", name: "Western Digital", role: "AI HDD + NAND — +180% YTD; structurally advantaged pricing through 2030" },
       { ticker: "SIMO", name: "Silicon Motion", role: "NAND flash controllers — brain of every SSD; MonTitan PCIe 6 for AI clouds" },
       { ticker: "NTAP", name: "NetApp", role: "Unified flash arrays — session memory and RAG data lakes feeding AI pipelines" },
-      { ticker: "P", name: "Everpure", role: "All-flash data platform (ex-Pure Storage) — hyperscaler design win; storage for AI training data lakes" },
+      { ticker: "P", name: "Everpure", role: "All-flash data platform (ex-Pure Storage; NYSE:P since Apr 2026) — hyperscaler design win; storage for AI training data lakes" },
     ],
   },
   {
@@ -174,7 +174,6 @@ export const AI_STACK_DATA: AIStackLayer[] = [
       { ticker: "GLW", name: "Corning", role: "Optical fiber & cable — physical AI data center backbone; Springboard plan targeting +$3B hyperscaler buildout" },
       { ticker: "LITE", name: "Lumentum", role: "Optical components — lasers, transceivers; triple-digit gains" },
       { ticker: "COHR", name: "Coherent", role: "Largest pure-play optical components co. with deep silicon photonics" },
-      { ticker: "MACOM", name: "MACOM Tech", role: "High-speed analog & photonic semiconductors across DC optical chain" },
       { ticker: "POET", name: "POET Technologies", role: "Optical Interposer — integrates laser+modulator+photodiode on one chip; 1.6T engines" },
       { ticker: "MRVL", name: "Marvell", role: "Celestial AI acquisition — photonic fabric chiplets for co-packaged optics (also L8)" },
       { ticker: "AAOI", name: "Applied Optoelectronics", role: "Vertically integrated transceiver maker — domestic US manufacturing" },

@@ -1,13 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   RefreshCw, ChevronDown, Layers, Search, X, ArrowLeft,
 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { RSHistogram } from "@/components/RSHistogram";
 import { useViewTransitionNavigate } from "@/lib/viewTransition";
 import { AI_STACK_DATA } from "@/data/aiStack";
 import { AIStackVideoBackdrop } from "@/components/AIStackVideoBackdrop";
 import { useTheme } from "@/hooks/useTheme";
+import type { RSResponse, RSStocksResponse } from "@shared/schema";
+
+// Per-stock RS percentile → color, matching the StockRSTab thresholds so the
+// same number means the same thing across the RS section.
+function rsColor(p: number): string {
+  if (p >= 90) return "var(--terminal-green)";
+  if (p >= 70) return "var(--terminal-amber)";
+  if (p < 40) return "var(--terminal-red)";
+  return "var(--text-secondary)";
+}
 
 // Pull "(also L2)" / "(also L11/L12)" cross-references out of role copy and surface
 // them as a separate chip so the overlapping-node insight reads as data, not parenthetical aside.
@@ -33,6 +45,32 @@ export default function AIStack() {
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const isSearching = query.trim().length > 0;
+
+  // ─── Live RS overlays ───
+  // ETF layer histograms — same endpoint/lookback the RS page defaults to.
+  const { data: rsEtf } = useQuery<RSResponse>({
+    queryKey: ["/api/relative-strength", "?benchmark=SPY&lookback=25"],
+    staleTime: 5 * 60 * 1000,
+  });
+  // Per-stock IBD-style RS percentiles (0–99), keyed by ticker.
+  const { data: rsStocks } = useQuery<RSStocksResponse>({
+    queryKey: ["/api/rs-stocks"],
+    staleTime: 60 * 60 * 1000, // ratings change once per trading day
+  });
+
+  const etfHist = useMemo(() => {
+    const m = new Map<string, number[]>();
+    rsEtf?.tickers.forEach((t) => {
+      if (!t.failed && t.histogram.length >= 2) m.set(t.symbol, t.histogram);
+    });
+    return m;
+  }, [rsEtf]);
+
+  const stockRS = useMemo(() => {
+    const m = new Map<string, number>();
+    rsStocks?.stocks.forEach((s) => m.set(s.ticker, s.rsPercentile));
+    return m;
+  }, [rsStocks]);
 
   const toggle = (i: number) => {
     setExpanded((prev) => {
@@ -320,6 +358,7 @@ export default function AIStack() {
               filteredData.map((layer) => {
                 const origIdx = "_origIdx" in layer ? (layer as { _origIdx: number })._origIdx : AI_STACK_DATA.indexOf(layer as typeof AI_STACK_DATA[number]);
                 const open = isExpanded(origIdx);
+                const gutterBars = (layer.etf ? etfHist.get(layer.etf) : undefined) ?? null;
                 return (
                   <div
                     key={`${layer.layer}-${origIdx}`}
@@ -385,6 +424,18 @@ export default function AIStack() {
                         </div>
 
                         <div className="flex items-center gap-3 flex-shrink-0">
+                          {/* ETF RS histogram — 25D vs SPY, sits just left of the
+                              $ETF chip. Hidden while searching (the chip flips to a
+                              company count) and for ETF-less layers / missing data. */}
+                          {!isSearching && gutterBars && (
+                            <span
+                              className="hidden sm:block flex-shrink-0"
+                              title={`$${layer.etf} — 25D relative strength vs SPY`}
+                              aria-hidden="true"
+                            >
+                              <RSHistogram data={gutterBars} width={92} height={24} />
+                            </span>
+                          )}
                           <span
                             className="text-[10px] px-2 py-0.5 rounded font-bold tracking-wider"
                             style={{
@@ -442,6 +493,7 @@ export default function AIStack() {
                         {layer.companies.map((co, j) => {
                           const isPrivate = co.ticker === "PRIVATE";
                           const { text: roleText, alsoLayers } = parseRole(co.role);
+                          const rs = isPrivate ? undefined : stockRS.get(co.ticker);
                           return (
                             <div
                               key={`${layer.layer}-${j}`}
@@ -450,7 +502,7 @@ export default function AIStack() {
                             >
                               <div className="flex items-center gap-2 mb-1">
                                 <span
-                                  className="text-[10px] font-bold tracking-wider"
+                                  className="text-[10px] font-bold tracking-wider flex-shrink-0"
                                   style={{
                                     color: isPrivate ? "var(--text-faint)" : "var(--terminal-cyan)",
                                     letterSpacing: "0.06em",
@@ -460,8 +512,22 @@ export default function AIStack() {
                                 >
                                   {isPrivate ? "PRIVATE" : `$${co.ticker}`}
                                 </span>
-                                <span className="text-[11px] font-bold truncate" style={{ color: "var(--text-primary)" }}>
+                                <span className="text-[11px] font-bold truncate flex-1 min-w-0" style={{ color: "var(--text-primary)" }}>
                                   {co.name}
+                                </span>
+                                {/* Per-stock RS percentile (0–99) — bare color-coded
+                                    number, matching the Stock RS table. Faint "—" when
+                                    the name isn't in the RS universe (private / IPO). */}
+                                <span
+                                  className="text-[11px] font-bold tabular-nums text-right flex-shrink-0"
+                                  style={{
+                                    width: "20px",
+                                    color: rs != null ? rsColor(rs) : "var(--text-faint)",
+                                    fontVariantNumeric: "tabular-nums lining-nums",
+                                  }}
+                                  title={rs != null ? "Relative strength percentile (0–99) vs the full stock universe" : "Not in the RS stock universe"}
+                                >
+                                  {rs != null ? rs : "—"}
                                 </span>
                               </div>
                               <div
