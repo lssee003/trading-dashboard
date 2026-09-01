@@ -23,17 +23,23 @@ Each indicator has a hover tooltip explaining what it measures and why it matter
 **Market Monitor** — scoring dashboard with indicator breakdown and trade decision
 ![Market Monitor](img/Market%20Monitor.png)
 
-**Glass Theme** — iOS Liquid Glass panels over a static nebula backdrop with a twinkling starfield
+**Glass Theme** — iOS Liquid Glass panels over a pure-CSS drifting light-bloom backdrop, with a custom glass cursor
 ![Glass Theme](img/Glass%20Theme.png)
 
 **Market Breadth** — Google Sheets-powered breadth table with conditional formatting
 ![Market Breadth](img/Market%20Breadth.png)
 
-**Relative Strength** — 10-day RS histogram with sector rotation analysis
+**Relative Strength** — configurable RS histogram (10/25/50/90-day) with sector rotation analysis
 ![Relative Strength](img/Relative%20Strength%20(Light).png)
 
 **Relative Rotation Graph (RRG)** — sector momentum and rotation visualization
 ![RRG](img/RRG.png)
+
+**Stock RS** — IBD-style RS-percentile ranking across the full ~5,900-stock universe, with sector / industry / market-cap / volume filters
+![Stock RS](img/Stock%20RS.png)
+
+**AI Infrastructure Stack** — 15-layer map of the AI buildout (raw materials → chips → hyperscalers), each layer tagged with its closest ETF proxy
+![AI Stack](img/AI%20Stack.png)
 
 ## Stack
 
@@ -106,14 +112,22 @@ Set via `.env.development` and `.env.production` (read by Vite at build time).
 
 ## Features
 
-- **Terminal-style UI** with light, dark, and iOS Liquid Glass themes
+- **Terminal-style UI** with light, dark, and iOS Liquid Glass themes, cycled with a View Transitions animation
+- **Glass theme** — frosted liquid-glass panels over a pure-CSS drifting light-bloom backdrop, plus a custom glass cursor (mouse only; touch and the terminal themes keep the native cursor)
 - **Auto-refresh** (dev) or daily snapshot (prod)
 - **Sector heatmap** showing 11 GICS sectors with daily performance
-- **25-day Relative Strength** histogram with rotation analysis
-- **Market Breadth tab** — Google Sheets-powered breadth table with value-based conditional formatting and terminal analysis
+- **Relative Strength page** with two universes and two views:
+  - **ETF universe** — ~90 sector, industry-group, and thematic ETFs ranked by RS vs a selectable benchmark
+  - **Stock universe** — IBD-style RS-percentile ranking across the full ~5,900-stock market, with sector / industry / RS≥ / market-cap≥ / volume≥ filters and an industry-group accordion view
+  - Selectable **benchmark** (SPY / RSP / IWM / QQQ) and **lookback window** (10 / 25 / 50 / 90-day)
+  - **Table** view with RS histogram, RS Pulse, and RS-vs-benchmark columns, or **RRG** (Relative Rotation Graph) view
+  - RS Leaders / Laggards summary panels; add any ticker via search
+- **AI Infrastructure Stack** reference page — 15 layers of the AI buildout (raw materials → power → data centers → fab equipment → chips → hyperscalers → applications), ~100 tickers with one-line roles, each layer tagged with its closest ETF proxy; searchable, expand/collapse all, reached from Relative Strength via a View Transitions nav
+- **Market Breadth tab** — Google Sheets-powered breadth table with value-based conditional formatting and an always-on Terminal Analysis status line plus Significant Events
 - **AI-generated narrative** summarizing current market regime
 - **Bounce alerts** when oversold conditions meet reversal criteria
 - **Hover tooltips** on every indicator for educational context
+- **Mobile-friendly** RS controls and scrollable data columns
 
 ## Google Sheets Integration
 
