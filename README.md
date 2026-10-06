@@ -18,28 +18,11 @@ Pulls data from Yahoo Finance (S&P 500 breadth, sector ETFs, VIX, Treasury yield
 
 Each indicator has a hover tooltip explaining what it measures and why it matters.
 
-## Screenshots
+## Launch Video
 
-**Market Monitor** — scoring dashboard with indicator breakdown and trade decision
-![Market Monitor](img/Market%20Monitor.png)
+[![5stars.setup launch video: click to play](img/launch.jpg)](img/launch.mp4)
 
-**Glass Theme** — iOS Liquid Glass panels over a pure-CSS drifting light-bloom backdrop, with a custom glass cursor
-![Glass Theme](img/Glass%20Theme.png)
-
-**Market Breadth** — Google Sheets-powered breadth table with conditional formatting
-![Market Breadth](img/Market%20Breadth.png)
-
-**Relative Strength** — configurable RS histogram (10/25/50/90-day) with sector rotation analysis
-![Relative Strength](img/Relative%20Strength%20(Light).png)
-
-**Relative Rotation Graph (RRG)** — sector momentum and rotation visualization
-![RRG](img/RRG.png)
-
-**Stock RS** — IBD-style RS-percentile ranking across the full ~5,900-stock universe, with sector / industry / market-cap / volume filters
-![Stock RS](img/Stock%20RS.png)
-
-**AI Infrastructure Stack** — 15-layer map of the AI buildout (raw materials → chips → hyperscalers), each layer tagged with its closest ETF proxy
-![AI Stack](img/AI%20Stack.png)
+*30-second tour (with sound): the Monitor verdict, Sectors rotation, Stock RS, Market Breadth and the AI stack. Click the image to play [`img/launch.mp4`](img/launch.mp4).*
 
 ## Stack
 
@@ -112,22 +95,33 @@ Set via `.env.development` and `.env.production` (read by Vite at build time).
 
 ## Features
 
-- **Terminal-style UI** with light, dark, and iOS Liquid Glass themes, cycled with a View Transitions animation
-- **Glass theme** — frosted liquid-glass panels over a pure-CSS drifting light-bloom backdrop, plus a custom glass cursor (mouse only; touch and the terminal themes keep the native cursor)
-- **Auto-refresh** (dev) or daily snapshot (prod)
-- **Sector heatmap** showing 11 GICS sectors with daily performance
-- **Relative Strength page** with two universes and two views:
-  - **ETF universe** — ~90 sector, industry-group, and thematic ETFs ranked by RS vs a selectable benchmark
-  - **Stock universe** — IBD-style RS-percentile ranking across the full ~5,900-stock market, with sector / industry / RS≥ / market-cap≥ / volume≥ filters and an industry-group accordion view
-  - Selectable **benchmark** (SPY / RSP / IWM / QQQ) and **lookback window** (10 / 25 / 50 / 90-day)
-  - **Table** view with RS histogram, RS Pulse, and RS-vs-benchmark columns, or **RRG** (Relative Rotation Graph) view
-  - RS Leaders / Laggards summary panels; add any ticker via search
-- **AI Infrastructure Stack** reference page — 15 layers of the AI buildout (raw materials → power → data centers → fab equipment → chips → hyperscalers → applications), ~100 tickers with one-line roles, each layer tagged with its closest ETF proxy; searchable, expand/collapse all, reached from Relative Strength via a View Transitions nav
-- **Market Breadth tab** — Google Sheets-powered breadth table with value-based conditional formatting and an always-on Terminal Analysis status line plus Significant Events
-- **AI-generated narrative** summarizing current market regime
-- **Bounce alerts** when oversold conditions meet reversal criteria
-- **Hover tooltips** on every indicator for educational context
-- **Mobile-friendly** RS controls and scrollable data columns
+The default UI (`client/src/v2/`) is a dark financial terminal with five pages: **Monitor · Sectors · Stocks · Breadth · AI stack**. A dot-matrix aura behind the content takes its colour from the current score.
+
+- **Monitor**
+  - The answer first: a **verdict** ("Trade." / "Caution." / "Avoid." plus a sizing line) and the **Market Quality gauge**, which counts up to today's score
+  - A plain-language narrative of the market regime, regime and stance chips, and **bounce alerts** when oversold conditions meet reversal criteria
+  - **Five category panels** (Volatility, Momentum, Trend, Breadth, Macro) with weights, point contributions and every underlying indicator; 4% Burst (5D/10D) and Breadth (Month/Quarter) toggle in place
+  - SPY / VIX / 10Y / DXY notes, a sector bar chart for the 11 SPDR ETFs, and a scrolling ticker tape
+- **Sectors**: ~90 sector, industry-group, thematic and index ETFs
+  - **List** view: Leaders / Laggards panels, plus a table with RS histogram, RS Pulse and lookback return
+  - **Rotation** view: a Relative Rotation Graph with 7-session trails and Leading / Improving / Weakening / Lagging groups
+  - Benchmark (SPY / RSP / IWM), window (10 / 25 / 50 / 90-day), universe filter and search
+- **Stocks**: IBD-style RS-percentile ranking across the full ~5,900-stock US market
+  - Stocks or Industries view
+  - RS ≥ 70 / 80 / 90, market cap ≥, volume ≥ and sector filters
+  - Ticker / industry search, 1M / 3M / 6M RS, % off 52-week high
+- **Breadth**
+  - Regime and stance line
+  - Up / down 4% today, 5- and 10-day ratios, T2108 and quarterly breadth
+  - Year-to-date chart switchable between 4% daily movers, 25% quarter, 25% / 50% month and 13% / 34 days, with a Commentary view
+  - The full daily breadth log from Google Sheets
+- **AI stack**: 15 layers of the AI buildout, from raw materials, power and data centers through fab equipment and chips to hyperscalers and applications
+  - ~100 companies, each with a one-line role and its stock RS rating
+  - Each layer is tagged with its closest ETF proxy and that ETF's 25-day RS histogram
+  - Searchable, with expand / collapse all
+- **Classic UI**: the original terminal UI (light, dark and Liquid Glass themes) sits behind the **Classic UI** pull-tab on the right edge; the choice is remembered in `localStorage`
+- **Auto-refresh** in dev, or a daily pre-market snapshot in production
+- **Mobile layout**: on small screens, a compact header with a full-screen page menu, plus single-column panels
 
 ## Google Sheets Integration
 
@@ -153,7 +147,7 @@ Configured in `server/sheetsData.ts` via `SHEET_ID` and `GID` constants. The she
 
 Google Sheets data is cached for **4 hours** server-side, consistent with the breadth metrics cache.
 
-### Conditional formatting (Market Breadth tab)
+### Conditional formatting (classic Market Breadth tab)
 
 Colors are computed client-side from cell values in `client/src/pages/GoogleSheets.tsx` — no dependency on the sheet's own formatting. See `computeCellColor()` for the full rule set.
 
