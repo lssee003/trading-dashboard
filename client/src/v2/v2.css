@@ -2,6 +2,7 @@
 
 @keyframes v2-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
 @keyframes v2-spin { to { transform: rotate(360deg) } }
+@keyframes v2-nudge { 0%, 55%, 100% { transform: translateX(0) } 70% { transform: translateX(4px) } 85% { transform: translateX(-1px) } }
 @keyframes v2-blink { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
 @keyframes v2-os-pulse {
   0% { box-shadow: 0 0 0 0 rgba(255,194,74,.8) }

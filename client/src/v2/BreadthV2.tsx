@@ -1,8 +1,8 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { SheetsCell, SheetsData } from "@shared/schema";
 import { generateBreadthAnalysis, computeCellColor, COL } from "@/pages/GoogleSheets";
-import { useV2, PageHead, Seg, RegimeChips, Loading, Dot } from "./ui";
+import { useV2, PageHead, Seg, RegimeChips, Loading, Dot, HScroll } from "./ui";
 import { SIG, MONO, SERIF, PANEL, num, sentence, regimeSig } from "./tokens";
 
 const PAIRS: [string, number, number, string, string, string][] = [
@@ -12,6 +12,11 @@ const PAIRS: [string, number, number, string, string, string][] = [
   ["50% month", COL.UP_50_MTH, COL.DOWN_50_MTH, "Up 50%+", "Down 50%+", "Stocks moving 50% or more in a month"],
   ["13% / 34 days", COL.UP_13_34D, COL.DOWN_13_34D, "Up 13%+", "Down 13%+", "Stocks moving 13% or more in 34 days"],
 ];
+
+/** Daily log: rows per infinite-scroll page, column widths (shared by the pinned header and the body), cell ground */
+const LOG_PAGE = 60;
+const colW = (i: number) => (i === 0 ? 112 : 104);
+const LOG_BG = "#03070e";
 
 const val = (r: SheetsCell[] | undefined, i: number) => (r && r[i] ? r[i].value : null);
 const numAt = (r: SheetsCell[] | undefined, i: number) => { const v = val(r, i); return typeof v === "number" ? v : null; };
@@ -42,8 +47,14 @@ export default function BreadthV2() {
 }
 
 function Breadth({ sh }: { sh: SheetsData }) {
-  const { mobile, contentW, accent } = useV2();
+  const { mobile, contentW, accent, mainRef } = useV2();
   const [pair, setPair] = useState(0);
+  const [limit, setLimit] = useState(LOG_PAGE);
+  const headRef = useRef<HTMLDivElement>(null);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const pinMark = useRef<HTMLDivElement>(null);
+  const pinWrap = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
   const [view, setView] = useState<"chart" | "notes">("chart");
   const [hover, setHover] = useState<number | null>(null);
 
@@ -85,7 +96,31 @@ function Breadth({ sh }: { sh: SheetsData }) {
   const gh = sh.groupHeaders || [];
   const hdr = sh.headers || [];
   const label: CSSProperties = { paddingBottom: 6, borderBottom: "1px solid rgba(150,190,255,.09)", fontFamily: MONO, fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", color: "#9fb0c6" };
-  const groupTh: CSSProperties = { position: "sticky", top: 0, zIndex: 2, boxShadow: "0 0 0 2px #050a14, 0 -10px 0 2px #050a14", fontFamily: MONO, fontWeight: 400, fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", padding: 10, borderRadius: 8 };
+  const groupTh: CSSProperties = { fontFamily: MONO, fontWeight: 400, fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", padding: 10, borderRadius: 8 };
+
+  // Daily log: fixed column widths so the pinned header lines up with the body, and infinite scroll
+  const logTable: CSSProperties = { tableLayout: "fixed", width: hdr.reduce((w, _, i) => w + colW(i) + 2, 2), borderCollapse: "separate", borderSpacing: 2, fontSize: 12.5, fontFamily: MONO, fontVariantNumeric: "tabular-nums" };
+  const logCols = <colgroup>{hdr.map((_, i) => <col key={i} style={{ width: colW(i) }} />)}</colgroup>;
+  const moreLog = rows.length > limit;
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!moreLog || !el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((es) => { if (es[0]?.isIntersecting) setLimit((l) => l + LOG_PAGE); }, { root: mainRef.current, rootMargin: "0px 0px 800px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [moreLog, limit, mainRef]);
+  // Once the log header is pinned, back it with a solid strip so rows don't show through the app bar's fade.
+  // A zero-height marker sits just above the header: when it scrolls away from the header, the header is pinned.
+  useEffect(() => {
+    const m = mainRef.current;
+    if (!m) return;
+    let raf = 0;
+    const check = () => { raf = 0; const a = pinMark.current, b = pinWrap.current; if (a && b) setPinned(b.getBoundingClientRect().top - a.getBoundingClientRect().top > 30); };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(check); };
+    m.addEventListener("scroll", onScroll, { passive: true });
+    check();
+    return () => { m.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, [mainRef]);
 
   return (
     <div data-screen-label="Breadth" style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: 10 }}>
@@ -194,24 +229,36 @@ function Breadth({ sh }: { sh: SheetsData }) {
           <span style={{ fontFamily: SERIF, fontSize: 30, color: "#eef3fa" }}>The daily <span style={{ fontStyle: "italic", color: accent.hex }}>log</span></span>
           <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: ".14em", textTransform: "uppercase", color: "#7f8ea3" }}>{sh.sheetTitle || "Market Breadth"}</span>
         </div>
-        <div className="v2-scroll" style={{ borderRadius: 16, padding: 8, overflow: "auto", maxHeight: "72vh", background: "#050a14", border: "1px solid rgba(150,190,255,.12)" }}>
-          <table style={{ borderCollapse: "separate", borderSpacing: 2, fontSize: 12.5, fontFamily: MONO, fontVariantNumeric: "tabular-nums" }}>
+        {/* Header pinned under the app bar; it scrolls sideways in step with the body below */}
+        <div ref={pinMark} aria-hidden="true" style={{ height: 0, marginBottom: -14 }} />
+        <div ref={pinWrap} style={{ position: "sticky", top: 76, zIndex: 5 }}>
+        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: "100%", height: 90, background: LOG_BG, opacity: pinned ? 1 : 0, pointerEvents: "none" }} />
+        <div ref={headRef} style={{ overflow: "hidden", background: LOG_BG, boxShadow: "0 14px 20px -16px rgba(0,0,0,.9)" }}>
+          <table style={logTable}>
+            {logCols}
             <thead>
               <tr>
-                <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "#050a14", boxShadow: "0 0 0 2px #050a14, 0 -10px 0 2px #050a14" }} />
+                <th style={{ position: "sticky", left: 0, zIndex: 3, background: LOG_BG, boxShadow: `0 0 0 2px ${LOG_BG}` }} />
                 <th colSpan={6} style={{ ...groupTh, background: "#1a1608", color: "#ffd88a" }}>{gh[1] || "Primary Breadth Indicators"}</th>
                 <th colSpan={Math.max(1, hdr.length - 7)} style={{ ...groupTh, background: "#07181a", color: "#8ff0cc" }}>{gh[7] || "Secondary Breadth Indicators"}</th>
               </tr>
               <tr>
                 {hdr.map((h, i) => (
-                  <th key={i} style={{ position: "sticky", top: 38, left: i === 0 ? 0 : "auto", zIndex: i === 0 ? 4 : 2, background: "#050a14", boxShadow: "0 0 0 2px #050a14", color: "#9fb0c6", fontFamily: "'Geist', sans-serif", fontWeight: 400, fontSize: 11.5, lineHeight: 1.3, textAlign: i === 0 ? "left" : "right", verticalAlign: "bottom", padding: "8px 10px", minWidth: i === 0 ? 104 : 92, maxWidth: 124 }}>
+                  <th key={i} style={{ position: i === 0 ? "sticky" : "static", left: 0, zIndex: i === 0 ? 3 : 1, background: LOG_BG, boxShadow: `0 0 0 2px ${LOG_BG}`, color: "#9fb0c6", fontFamily: "'Geist', sans-serif", fontWeight: 400, fontSize: 11.5, lineHeight: 1.3, textAlign: i === 0 ? "left" : "right", verticalAlign: "bottom", padding: "8px 10px" }}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
+          </table>
+        </div>
+        </div>
+        <div style={{ marginTop: -12 }}>
+        <HScroll chevronTop={6} onScrollX={(x) => { if (headRef.current) headRef.current.scrollLeft = x; }}>
+          <table style={logTable}>
+            {logCols}
             <tbody>
-              {rows.map((r, ri) => (
+              {rows.slice(0, limit).map((r, ri) => (
                 <tr key={ri} data-reveal style={{ ["--rv-y" as string]: "10px", transition: "opacity .7s ease, transform .8s cubic-bezier(.16,1,.3,1)" }}>
                   {hdr.map((_, ci) => {
                     const v = val(r, ci);
@@ -222,10 +269,10 @@ function Breadth({ sh }: { sh: SheetsData }) {
                     return (
                       <td key={ci} style={{
                         position: ci === 0 ? "sticky" : "static", left: 0, zIndex: ci === 0 ? 1 : 0,
-                        background: ci === 0 ? "#050a14" : c ? c.bg : "rgba(140,180,255,.035)",
-                        boxShadow: ci === 0 ? "0 0 0 2px #050a14, -10px 0 0 2px #050a14" : "none",
+                        background: ci === 0 ? LOG_BG : c ? c.bg : "rgba(140,180,255,.035)",
+                        boxShadow: ci === 0 ? `0 0 0 2px ${LOG_BG}` : "none",
                         color: ci === 0 ? "#dfe7f2" : c ? c.text : "#aebbcc", fontWeight: c?.bold ? 600 : 400,
-                        textAlign: ci === 0 ? "left" : "right", padding: "8px 10px", borderRadius: 6, whiteSpace: "nowrap",
+                        textAlign: ci === 0 ? "left" : "right", padding: "8px 10px", borderRadius: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                       }}>
                         {txt}
                       </td>
@@ -235,7 +282,9 @@ function Breadth({ sh }: { sh: SheetsData }) {
               ))}
             </tbody>
           </table>
+        </HScroll>
         </div>
+        {moreLog && <div ref={sentinel} aria-hidden="true" style={{ height: 1 }} />}
       </div>
     </div>
   );

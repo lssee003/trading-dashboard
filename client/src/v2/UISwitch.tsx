@@ -45,7 +45,7 @@ export function UISwitch({ ui, onToggle }: { ui: "new" | "classic"; onToggle: ()
       aria-label={open ? title : "Show UI switch"}
       className="v2-uiswitch"
       style={{
-        position: "fixed", right: 0, bottom: mobile ? 18 : 34, zIndex: 100,
+        position: "fixed", right: 0, bottom: classic ? (mobile ? 18 : 34) : `calc(${mobile ? 50 : 48}px + env(safe-area-inset-bottom, 0px))`, zIndex: 100,
         display: "flex", alignItems: "center", gap: 10, height: 38, padding: "0 18px 0 10px",
         borderRadius: "19px 0 0 19px", border: "1px solid rgba(150,190,255,.18)", borderRight: 0,
         background: classic ? "rgba(6,11,22,.88)" : "rgba(6,11,22,.78)",

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DashboardData } from "@shared/schema";
 import { AuraRing } from "./AuraRing";
-import { V2Context, Spinner, type V2Ctx } from "./ui";
+import { V2Context, Spinner, TAPE_H, type V2Ctx } from "./ui";
 import { SIG, MONO, SERIF, EASE, accentFor, ago, fmtDate, lsGet, lsSet } from "./tokens";
-import MonitorV2 from "./MonitorV2";
+import MonitorV2, { Tape } from "./MonitorV2";
 import RelativeStrengthV2 from "./RelativeStrengthV2";
 import StockRSV2 from "./StockRSV2";
 import BreadthV2 from "./BreadthV2";
@@ -169,7 +169,7 @@ export function V2App({ onPageChange }: { onPageChange?: (p: V2Page) => void }) 
         <div style={{ position: "absolute", inset: 0, display: "flex" }}>
           <div style={{ flex: 1, minWidth: 0, position: "relative", background: "#02050b", overflow: "hidden" }}>
             <AuraRing rgb={accent.rgb} anchor={page === "monitor" && dash ? gaugeRef : null} phase={phase} pulse={pulse} dim={page === "monitor" ? 1 : 0.55} />
-            <main ref={mainRef} className="v2-scroll" style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
+            <main ref={mainRef} className="v2-scroll" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: page === "monitor" ? `calc(${TAPE_H}px + env(safe-area-inset-bottom, 0px))` : 0, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
               <header style={{ position: "sticky", top: 0, zIndex: 20, height: 76, display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr) auto" : "minmax(0,1fr) auto minmax(0,1fr)", alignItems: "center", gap: 16, padding: mobile ? "0 16px" : "0 28px", background: "linear-gradient(180deg, rgba(2,5,11,.92) 30%, rgba(2,5,11,0))" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
                   <Logo onClick={() => go("monitor")} />
@@ -207,7 +207,8 @@ export function V2App({ onPageChange }: { onPageChange?: (p: V2Page) => void }) 
                 )}
               </header>
 
-              <div style={{ padding: mobile ? "4px 16px 56px" : `0 28px ${page === "monitor" ? 10 : 24}px`, position: "relative" }}>
+              {/* Off the Monitor, pages scroll under the frosted tape, so leave room for it at the end */}
+              <div style={{ padding: mobile ? "4px 16px 56px" : `0 28px ${page === "monitor" ? 10 : 24}px`, paddingBottom: page === "monitor" ? undefined : `calc(${mobile ? 56 : 24}px + ${TAPE_H}px + env(safe-area-inset-bottom, 0px))`, position: "relative" }}>
                 <div style={PHASE[phase]}>
                   {needsDash && !dash ? (
                     <div style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, fontFamily: MONO, fontSize: 11, letterSpacing: ".14em", textTransform: "uppercase", color: "#8c9bb0" }}>
@@ -226,6 +227,17 @@ export function V2App({ onPageChange }: { onPageChange?: (p: V2Page) => void }) 
                 </div>
               </div>
             </main>
+
+            {/* Ticker tape: pinned to the bottom of the screen on every page (see-through on the Monitor) */}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 25, height: `calc(${TAPE_H}px + env(safe-area-inset-bottom, 0px))`, paddingBottom: "env(safe-area-inset-bottom, 0px)", display: "flex", alignItems: "center", gap: 18, paddingLeft: mobile ? 0 : 28, paddingRight: mobile ? 0 : 28,
+              // Monitor: the tape sits straight on the aura, as part of the dashboard; elsewhere it sits on frosted glass (same tint as PANEL)
+              background: page === "monitor" ? "rgba(6,11,22,0)" : "rgba(6,11,22,.5)", WebkitBackdropFilter: page === "monitor" ? "none" : "blur(18px) saturate(1.3)", backdropFilter: page === "monitor" ? "none" : "blur(18px) saturate(1.3)",
+              borderTop: `1px solid rgba(150,190,255,${page === "monitor" ? 0.09 : 0.1})`, transition: "background .5s ease" }}>
+              <div style={{ flex: 1, minWidth: 0, overflow: "hidden", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent)", maskImage: "linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent)" }}>
+                {dash ? <Tape d={dash} /> : <span style={{ paddingLeft: 16, fontFamily: MONO, fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: "#7f8ea3" }}>{isError ? "Data feed unreachable" : "Connecting to the tape…"}</span>}
+              </div>
+              {!mobile && dash && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: ".1em", color: "#7f8ea3", flexShrink: 0, whiteSpace: "nowrap" }}>{dash.dataSource} · NOT FINANCIAL ADVICE</span>}
+            </div>
           </div>
         </div>
 
@@ -235,11 +247,11 @@ export function V2App({ onPageChange }: { onPageChange?: (p: V2Page) => void }) 
               <Logo onClick={() => go("monitor")} />
               <button onClick={() => setMenu(false)} style={{ height: 40, padding: "0 18px", borderRadius: 20, border: "1px solid rgba(150,190,255,.16)", background: "rgba(8,14,26,.7)", color: "#e8eef6", fontSize: 14, cursor: "pointer" }}>Close</button>
             </div>
-            <nav style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 44 }}>
+            <nav style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, marginTop: 44 }}>
               {NAV.map(([id, label]) => {
                 const on = (navTarget || page) === id;
                 return (
-                  <button key={id} onClick={() => go(id)} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", gap: 14, padding: "8px 0", background: "none", border: 0, color: on ? "#ffffff" : "#8c9bb0", fontFamily: SERIF, fontStyle: "italic", fontSize: 44, textAlign: "left", cursor: "pointer" }}>
+                  <button key={id} onClick={() => go(id)} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", gap: 14, padding: "8px 0", background: "none", border: 0, color: on ? "#ffffff" : "#8c9bb0", fontFamily: SERIF, fontStyle: "italic", fontSize: 44, textAlign: "right", cursor: "pointer" }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: accent.hex, boxShadow: `0 0 10px ${accent.hex}`, opacity: on ? 1 : 0 }} />
                     {label}
                   </button>
@@ -247,7 +259,7 @@ export function V2App({ onPageChange }: { onPageChange?: (p: V2Page) => void }) 
               })}
             </nav>
             <div style={{ flex: 1 }} />
-            <p style={{ margin: 0, fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", color: "#7f8ea3" }}>{dataStamp}</p>
+            <p style={{ margin: 0, fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", color: "#7f8ea3", textAlign: "right" }}>{dataStamp}</p>
           </div>
         )}
       </div>

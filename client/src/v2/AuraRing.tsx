@@ -78,7 +78,9 @@ export function AuraRing(props: AuraProps) {
       if (an) {
         const r = an.getBoundingClientRect();
         const z = wr.width / s.W || 1;
-        if (r.width) { cx = (r.left + r.width / 2 - wr.left) / z; cy = (r.top + r.height / 2 - wr.top) / z; rx = (r.width / z) * 1.12; ry = (r.height / z) * 0.86; }
+        // Narrow (single-column) layouts stack the verdict right under the gauge, so the ring hugs the dial there
+        const tight = s.W < 820; // matches V2App's mobile breakpoint
+        if (r.width) { cx = (r.left + r.width / 2 - wr.left) / z; cy = (r.top + r.height / 2 - wr.top) / z; rx = (r.width / z) * (tight ? 0.6 : 1.12); ry = (r.height / z) * (tight ? 0.6 : 0.86); }
       }
       if (!s.g || reduced) s.g = { cx, cy, rx, ry };
       else { const g = s.g, k = 0.14; g.cx += (cx - g.cx) * k; g.cy += (cy - g.cy) * k; g.rx += (rx - g.rx) * k; g.ry += (ry - g.ry) * k; }

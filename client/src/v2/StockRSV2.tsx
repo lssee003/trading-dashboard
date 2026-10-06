@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { RSStock, RSStocksResponse } from "@shared/schema";
-import { useV2, PageHead, Seg, SearchBox, Loading, SortHead, PrimaryButton } from "./ui";
+import { useV2, PageHead, Seg, SearchBox, Loading, SortHead, HScroll, PIN_CELL } from "./ui";
 import { SIG, MONO, PANEL, num, big, rsPctSig } from "./tokens";
 
 type SortKey = "rank" | "rsPercentile" | "ticker" | "rs1M" | "rs3M" | "rs6M" | "price" | "marketCap" | "pctFrom52WkHigh" | "avgVol30";
@@ -14,7 +14,7 @@ export function useStocks() {
 }
 
 export default function StockRSV2() {
-  const { mobile: m0, contentW } = useV2();
+  const { mobile: m0, contentW, mainRef } = useV2();
   const mobile = m0 || contentW < 940;
   const { data } = useStocks();
 
@@ -67,8 +67,22 @@ export default function StockRSV2() {
   };
 
   const meta = data ? `${num(data.stocks.length)} US stocks · IBD-style RS percentile · ${num(filtered.length)} match` : "IBD-style RS percentile across the US market";
-  const cols = mobile ? "38px minmax(0,1fr) auto" : "30px 38px minmax(0,1.6fr) 48px 48px 48px 76px 72px 88px 64px";
+  // Mobile keeps every column at a fixed width and scrolls sideways; the RS ring + ticker cell stays pinned left
+  const cols = mobile ? "30px 196px 44px 44px 44px 76px 68px 84px 60px" : "30px 38px minmax(0,1.6fr) 48px 48px 48px 76px 72px 88px 64px";
+  const pin: CSSProperties = mobile ? { ...PIN_CELL, gap: 12 } : {};
   const rows = filtered.slice(0, limit);
+
+  // Infinite scroll: load the next page as the end of the list nears the bottom of <main>.
+  // Re-observing after every page re-checks, so tall screens keep filling until the sentinel is out of range.
+  const sentinel = useRef<HTMLDivElement>(null);
+  const more = view === "stocks" && filtered.length > limit;
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!more || !el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((es) => { if (es[0]?.isIntersecting) setLimit((l) => l + PAGE); }, { root: mainRef.current, rootMargin: "0px 0px 800px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [more, limit, mainRef]);
 
   return (
     <div data-screen-label="Stocks" style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: 10 }}>
@@ -97,54 +111,59 @@ export default function StockRSV2() {
       {data && view === "stocks" && (
         <>
           <div style={{ ...PANEL, boxShadow: undefined, overflow: "hidden" }}>
+           <HScroll chevronTop={10}>
+           <div style={{ width: mobile ? "max-content" : undefined, minWidth: "100%" }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid rgba(150,190,255,.10)" }}>
-              {!mobile && <SortHead label="#" align="right" active={sort === "rank"} dir={dir} onClick={() => onSort("rank")} />}
-              <SortHead label="RS" align="center" active={sort === "rsPercentile"} dir={dir} onClick={() => onSort("rsPercentile")} />
-              <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
-              {!mobile ? (
-                ([["rs1M", "1M"], ["rs3M", "3M"], ["rs6M", "6M"], ["price", "Price"], ["marketCap", "Mkt cap"], ["pctFrom52WkHigh", "% 52W high"], ["avgVol30", "Avg vol"]] as [SortKey, string][]).map(([k, l]) => (
-                  <SortHead key={k} label={l} align="right" active={sort === k} dir={dir} onClick={() => onSort(k)} />
-                ))
+              <SortHead label="#" align="right" active={sort === "rank"} dir={dir} onClick={() => onSort("rank")} />
+              {mobile ? (
+                <div style={pin}>
+                  <SortHead label="RS" active={sort === "rsPercentile"} dir={dir} onClick={() => onSort("rsPercentile")} />
+                  <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
+                </div>
               ) : (
-                <SortHead label="Price" align="right" active={sort === "price"} dir={dir} onClick={() => onSort("price")} />
+                <>
+                  <SortHead label="RS" align="center" active={sort === "rsPercentile"} dir={dir} onClick={() => onSort("rsPercentile")} />
+                  <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
+                </>
               )}
+              {([["rs1M", "1M"], ["rs3M", "3M"], ["rs6M", "6M"], ["price", "Price"], ["marketCap", "Mkt cap"], ["pctFrom52WkHigh", "% 52W high"], ["avgVol30", "Avg vol"]] as [SortKey, string][]).map(([k, l]) => (
+                <SortHead key={k} label={l} align="right" active={sort === k} dir={dir} onClick={() => onSort(k)} />
+              ))}
             </div>
             {rows.map((x) => {
               const c = rc(x.rsPercentile);
               const mono = (color: string) => ({ fontFamily: MONO, fontSize: 13, color, textAlign: "right" as const });
               const hiC = x.pctFrom52WkHigh != null && x.pctFrom52WkHigh >= -5 ? SIG.up.c : "#b9b8b4";
+              const ring = (
+                <div style={{ position: "relative", flexShrink: 0, width: 38, height: 38, borderRadius: "50%", background: `conic-gradient(${c} ${x.rsPercentile * 3.6}deg, rgba(140,180,255,.12) 0)` }}>
+                  <div style={{ position: "absolute", inset: 3, borderRadius: "50%", background: "#050a14", display: "grid", placeItems: "center", fontFamily: MONO, fontSize: 12, color: c }}>{x.rsPercentile}</div>
+                </div>
+              );
+              const ident = (
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  <span style={{ fontFamily: MONO, fontSize: 13.5, color: "#eef3fa" }}>{x.ticker}</span>
+                  <span style={{ fontSize: 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{x.industry || x.sector}</span>
+                </div>
+              );
               return (
                 <div key={x.ticker} data-reveal className="v2-row" style={{ display: "grid", gridTemplateColumns: cols, gap: 14, alignItems: "center", minHeight: 54, padding: "6px 20px", borderTop: "1px solid rgba(150,190,255,.06)", transition: "background .2s, opacity .8s ease, transform .9s cubic-bezier(.16,1,.3,1)" }}>
-                  {!mobile && <span style={{ ...mono("#7f8ea3"), fontSize: 11 }}>{x.rank}</span>}
-                  <div style={{ position: "relative", width: 38, height: 38, borderRadius: "50%", background: `conic-gradient(${c} ${x.rsPercentile * 3.6}deg, rgba(140,180,255,.12) 0)` }}>
-                    <div style={{ position: "absolute", inset: 3, borderRadius: "50%", background: "#050a14", display: "grid", placeItems: "center", fontFamily: MONO, fontSize: 12, color: c }}>{x.rsPercentile}</div>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                    <span style={{ fontFamily: MONO, fontSize: 13.5, color: "#eef3fa" }}>{x.ticker}</span>
-                    <span style={{ fontSize: 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{x.industry || x.sector}</span>
-                  </div>
-                  {!mobile ? (
-                    <>
-                      <span style={mono("#aebbcc")}>{num(x.rs1M)}</span>
-                      <span style={mono("#aebbcc")}>{num(x.rs3M)}</span>
-                      <span style={mono("#aebbcc")}>{num(x.rs6M)}</span>
-                      <span style={mono("#d7e0ec")}>{x.price != null ? num(x.price, 2) : "—"}</span>
-                      <span style={mono("#d7e0ec")}>{big(x.marketCap)}</span>
-                      <span style={mono(hiC)}>{x.pctFrom52WkHigh == null ? "—" : `${x.pctFrom52WkHigh > 0 ? "+" : ""}${x.pctFrom52WkHigh.toFixed(1)}%`}</span>
-                      <span style={mono("#aebbcc")}>{big(x.avgVol30)}</span>
-                    </>
-                  ) : (
-                    <div style={{ textAlign: "right", fontFamily: MONO }}>
-                      <div style={{ fontSize: 13.5, color: "#d7e0ec" }}>{x.price != null ? num(x.price, 2) : "—"}</div>
-                      <div style={{ fontSize: 11.5, color: "#8c9bb0", marginTop: 2 }}>{big(x.marketCap)}</div>
-                    </div>
-                  )}
+                  <span style={{ ...mono("#7f8ea3"), fontSize: 11 }}>{x.rank}</span>
+                  {mobile ? <div style={pin}>{ring}{ident}</div> : <>{ring}{ident}</>}
+                  <span style={mono("#aebbcc")}>{num(x.rs1M)}</span>
+                  <span style={mono("#aebbcc")}>{num(x.rs3M)}</span>
+                  <span style={mono("#aebbcc")}>{num(x.rs6M)}</span>
+                  <span style={mono("#d7e0ec")}>{x.price != null ? num(x.price, 2) : "—"}</span>
+                  <span style={mono("#d7e0ec")}>{big(x.marketCap)}</span>
+                  <span style={mono(hiC)}>{x.pctFrom52WkHigh == null ? "—" : `${x.pctFrom52WkHigh > 0 ? "+" : ""}${x.pctFrom52WkHigh.toFixed(1)}%`}</span>
+                  <span style={mono("#aebbcc")}>{big(x.avgVol30)}</span>
                 </div>
               );
             })}
             {rows.length === 0 && <div style={{ padding: "36px 20px", color: "#8c9bb0", fontSize: 14 }}>No stocks match these filters.</div>}
+           </div>
+           </HScroll>
           </div>
-          {filtered.length > limit && <PrimaryButton onClick={() => setLimit((l) => l + PAGE)}>Show more · {num(filtered.length - limit)} left</PrimaryButton>}
+          {more && <div ref={sentinel} aria-hidden="true" style={{ height: 1 }} />}
         </>
       )}
 

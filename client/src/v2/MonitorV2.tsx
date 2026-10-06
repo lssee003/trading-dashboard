@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { CategoryScore, DashboardData } from "@shared/schema";
-import { useV2, Dot, MiniSeg, RegimeChips } from "./ui";
+import { useV2, Dot, MiniSeg, RegimeChips, TAPE_H } from "./ui";
 import { SIG, MONO, SERIF, PANEL, KICKER, num, pct, accentFor, regimeSig, prefersReducedMotion, sentence, type Sig } from "./tokens";
 
 const VERDICT: Record<string, [string, string]> = {
@@ -57,9 +57,10 @@ function Monitor({ d }: { d: DashboardData }) {
   const parts = String(ta?.stance || "").split(/\s*—\s*/);
 
   // ── Layout ──
-  const availH = h - 76 - 24;
+  const availH = h - 76 - 24 - TAPE_H;
   const dense = !mobile && availH < 820;
-  const g = mobile ? Math.min(contentW - 40, 300) : Math.round(Math.max(220, Math.min(contentW * 0.22, availH * 0.42, 330)));
+  // Mobile keeps the dial compact so the verdict, chips and market row still land on the first screen
+  const g = mobile ? Math.min(contentW - 40, 228) : Math.round(Math.max(220, Math.min(contentW * 0.22, availH * 0.42, 330)));
   const heroCols = mobile ? "minmax(0,1fr)" : contentW < 1080 ? "minmax(0,1fr) auto" : "minmax(0,1.05fr) auto minmax(0,1fr)";
   const catCols = mobile ? "minmax(0,1fr)" : contentW < 1080 ? "repeat(3, minmax(0,1fr))" : "repeat(5, minmax(0,1fr))";
   const rowPad = dense ? "4px 0" : "6px 0", rowFs = dense ? 12 : 12.5;
@@ -69,7 +70,7 @@ function Monitor({ d }: { d: DashboardData }) {
   const baseHead = mobile ? 52 : dense ? Math.max(42, Math.min(layoutW * 0.04, 62)) : Math.max(46, Math.min(layoutW * 0.046, 78));
   const [fit, setFit] = useState(1);
   const monRef = useRef<HTMLDivElement>(null);
-  const minH = h - 76 - 10;
+  const minH = h - 76 - 10 - TAPE_H;
   useEffect(() => setFit(1), [contentW, h, d.decision]);
   useLayoutEffect(() => {
     const el = monRef.current;
@@ -178,7 +179,7 @@ function Monitor({ d }: { d: DashboardData }) {
         </div>
 
         {/* Gauge */}
-        <div style={{ justifySelf: "center", position: "relative" }}>
+        <div style={{ justifySelf: "center", position: "relative", order: mobile ? -1 : undefined, marginBottom: mobile ? 24 : undefined }}>
           <div ref={gaugeRef} role="img" aria-label={`Market quality ${score} of 100, decision ${d.decision}`} style={{ position: "relative", width: g, height: g }}>
             <svg viewBox="0 0 200 200" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }} aria-hidden="true">
               <circle cx="100" cy="100" r="98" fill="rgba(2,5,11,.62)" />
@@ -272,18 +273,12 @@ function Monitor({ d }: { d: DashboardData }) {
         ))}
       </div>
 
-      {/* Tape */}
-      <div style={{ display: "flex", alignItems: "center", gap: 18, height: 30, borderTop: "1px solid rgba(150,190,255,.09)" }}>
-        <div style={{ flex: 1, minWidth: 0, overflow: "hidden", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent)", maskImage: "linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent)" }}>
-          <Tape d={d} />
-        </div>
-        {!mobile && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: ".1em", color: "#7f8ea3", flexShrink: 0, whiteSpace: "nowrap" }}>{d.dataSource} · NOT FINANCIAL ADVICE</span>}
-      </div>
     </div>
   );
 }
 
-function Tape({ d }: { d: DashboardData }) {
+/** Scrolling ticker tape; rendered by the shell as a bar pinned to the bottom of every page */
+export function Tape({ d }: { d: DashboardData }) {
   const row = (k: string) => (
     <div key={k} aria-hidden={k === "b" ? true : undefined} style={{ display: "flex", flexShrink: 0 }}>
       {d.tickers.map((t) => (

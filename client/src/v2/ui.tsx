@@ -1,5 +1,5 @@
-import { createContext, useContext, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { KICKER, MONO, SERIF, type Accent } from "./tokens";
+import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { KICKER, MONO, SERIF, prefersReducedMotion, type Accent } from "./tokens";
 
 /* ── Shell context: layout metrics + accent shared by every page ── */
 
@@ -22,6 +22,9 @@ export function useV2() {
   if (!c) throw new Error("useV2 outside V2Context");
   return c;
 }
+
+/** Height of the ticker tape pinned to the bottom of every page (the phone's safe area is added on top) */
+export const TAPE_H = 34;
 
 /* ── Primitives ── */
 
@@ -165,5 +168,94 @@ export function Spark({ posD, negD, style }: { posD: string; negD: string; style
       <path d={posD} fill="#3fe0a6" />
       <path d={negD} fill="#ff5c5c" />
     </svg>
+  );
+}
+
+/** Style for a cell that stays pinned to the left edge of an HScroll */
+export const PIN_CELL: CSSProperties = { position: "sticky", left: 0, zIndex: 1, background: "var(--pin-bg)", boxShadow: "var(--pin-shadow)", alignSelf: "stretch", display: "flex", alignItems: "center", paddingRight: 8, transition: "background .2s" };
+
+/**
+ * Sideways-scrolling area for tables wider than the screen. When it overflows it hints that
+ * there's more to the right: a one-time "peek" (glides right and back when first seen), a soft
+ * right-edge fade while more columns remain, and a small bouncing chevron until the user scrolls.
+ */
+export function HScroll({ children, onScrollX, style, chevronTop = 12 }: { children: ReactNode; onScrollX?: (x: number) => void; style?: CSSProperties; chevronTop?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [over, setOver] = useState(false);   // content wider than the box
+  const [atEnd, setAtEnd] = useState(false); // scrolled to the right edge
+  const [moved, setMoved] = useState(false); // user has scrolled sideways
+  const [shifted, setShifted] = useState(false); // currently scrolled off the left edge
+  const peeking = useRef(false);
+
+  const measure = () => {
+    const el = ref.current;
+    if (!el) return;
+    setOver(el.scrollWidth > el.clientWidth + 4);
+    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    if (el.firstElementChild) ro?.observe(el.firstElementChild);
+    return () => ro?.disconnect();
+  }, []);
+
+  // Peek once, the first time the area comes properly into view
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !over || prefersReducedMotion() || typeof IntersectionObserver === "undefined") return;
+    let raf = 0, timer = 0;
+    const io = new IntersectionObserver((es) => {
+      if (!es[0]?.isIntersecting || el.scrollLeft > 0) return;
+      io.disconnect();
+      timer = window.setTimeout(() => {
+        const dist = Math.min(56, el.scrollWidth - el.clientWidth), t0 = performance.now(), D = 1100;
+        peeking.current = true;
+        const step = (t: number) => {
+          const k = Math.min(1, (t - t0) / D);
+          el.scrollLeft = dist * Math.sin(Math.PI * k) * (1 - 0.15 * k); // out and back, easing in and out
+          if (k < 1) raf = requestAnimationFrame(step);
+          else { el.scrollLeft = 0; peeking.current = false; }
+        };
+        raf = requestAnimationFrame(step);
+      }, 450);
+    }, { threshold: 0, rootMargin: "0px 0px -35% 0px" }); // tall tables: fire once the top enters the upper ~2/3 of the screen
+    io.observe(el);
+    return () => { io.disconnect(); clearTimeout(timer); cancelAnimationFrame(raf); };
+  }, [over]);
+
+  const fade = over && !atEnd;
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        ref={ref}
+        className="v2-scroll v2-noscroll"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          onScrollX?.(el.scrollLeft);
+          setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+          setShifted(el.scrollLeft > 1);
+          if (!peeking.current && el.scrollLeft > 8) setMoved(true);
+        }}
+        style={{
+          overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch",
+          // Pinned cells (PIN_CELL) only get a solid backing while columns are sliding under them
+          ["--pin-bg" as string]: shifted ? "#070c17" : "transparent",
+          ["--pin-shadow" as string]: shifted ? "12px 0 14px -12px rgba(0,0,0,.9)" : "none",
+          WebkitMaskImage: fade ? "linear-gradient(90deg, #000 calc(100% - 36px), transparent)" : undefined,
+          maskImage: fade ? "linear-gradient(90deg, #000 calc(100% - 36px), transparent)" : undefined,
+          ...style,
+        } as CSSProperties}
+      >
+        {children}
+      </div>
+      {over && !moved && !atEnd && (
+        <span aria-hidden="true" style={{ position: "absolute", top: chevronTop, right: 6, zIndex: 6, display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 12, background: "rgba(8,14,26,.85)", border: "1px solid rgba(150,190,255,.22)", color: "#cfe0f5", fontFamily: MONO, fontSize: 14, lineHeight: 1, pointerEvents: "none", animation: "v2-nudge 1.6s ease-in-out infinite" }}>›</span>
+      )}
+    </div>
   );
 }
