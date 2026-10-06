@@ -20,9 +20,9 @@ Each indicator has a hover tooltip explaining what it measures and why it matter
 
 ## Launch Video
 
-[![5stars.setup launch video: click to play](img/launch.jpg)](img/launch.mp4)
+https://github.com/user-attachments/assets/3767b6c6-6625-468a-ad43-69343770521d
 
-*30-second tour (with sound): the Monitor verdict, Sectors rotation, Stock RS, Market Breadth and the AI stack. Click the image to play [`img/launch.mp4`](img/launch.mp4).*
+*30-second tour (with sound): the Monitor verdict, Sectors rotation, Stock RS, Market Breadth and the AI stack.*
 
 ## Stack
 
