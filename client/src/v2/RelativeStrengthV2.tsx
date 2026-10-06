@@ -104,9 +104,11 @@ export default function RelativeStrengthV2() {
 
   const meta = base ? `${base.list.length} ETFs · ${win}-day window · vs ${bench}` : `${win}-day window · vs ${bench}`;
 
-  // Mobile keeps every column at a fixed width and scrolls sideways; the symbol cell (with its dot) stays pinned left
-  const cols = mobile ? "24px 168px 132px 72px 84px 64px 52px 116px" : "28px 12px minmax(0,1.3fr) minmax(0,1fr) 78px 92px 66px 56px minmax(90px,140px)";
-  const pin: CSSProperties = mobile ? { ...PIN_CELL, gap: 10 } : {};
+  // Mobile is a dense terminal-style table (like the classic UI): fixed narrow columns that scroll sideways,
+  // no Category column, and the symbol cell (with its dot) pinned left
+  const cols = mobile ? "18px 116px 56px 58px 48px 42px 84px" : "28px 12px minmax(0,1.3fr) minmax(0,1fr) 78px 92px 66px 56px minmax(90px,140px)";
+  const pin: CSSProperties = mobile ? { ...PIN_CELL, gap: 7 } : {};
+  const gap = mobile ? 8 : 14, padX = mobile ? 12 : 20, fs = mobile ? 11.5 : 13;
   const rsColor = (v: number) => (v >= 1 ? SIG.up.c : SIG.down.c);
   const pulseColor = (p: number | null) => (p == null ? "#8b8b90" : p >= 80 ? SIG.up.c : p >= 50 ? SIG.mid.c : SIG.down.c);
 
@@ -145,43 +147,43 @@ export default function RelativeStrengthV2() {
           <div style={{ ...PANEL, boxShadow: undefined, overflow: "hidden" }}>
            <HScroll chevronTop={10}>
            <div style={{ width: mobile ? "max-content" : undefined, minWidth: "100%" }}>
-            <div style={{ display: "grid", gridTemplateColumns: cols, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid rgba(150,190,255,.10)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: cols, gap, alignItems: "center", padding: mobile ? `9px ${padX}px` : "12px 20px", borderBottom: "1px solid rgba(150,190,255,.10)" }}>
               <SortHead label="#" align="right" active={sort === "rank"} dir={dir} onClick={() => onSort("rank")} />
               {!mobile && <span />}
               <div style={pin}><SortHead label="Symbol" active={sort === "sym"} dir={dir} onClick={() => onSort("sym")} /></div>
-              <SortHead label="Category" active={sort === "cat"} dir={dir} onClick={() => onSort("cat")} />
+              {!mobile && <SortHead label="Category" active={sort === "cat"} dir={dir} onClick={() => onSort("cat")} />}
               <SortHead label="Close" align="right" active={sort === "close"} dir={dir} onClick={() => onSort("close")} />
-              <SortHead label={win + "D return"} align="right" active={sort === "ret"} dir={dir} onClick={() => onSort("ret")} />
+              <SortHead label={win + (mobile ? "D" : "D return")} align="right" active={sort === "ret"} dir={dir} onClick={() => onSort("ret")} />
               <SortHead label="RS" align="right" active={sort === "rs"} dir={dir} onClick={() => onSort("rs")} />
               <SortHead label="Pulse" align="right" active={sort === "pulse"} dir={dir} onClick={() => onSort("pulse")} />
-              <SortHead label="RS histogram" active={false} dir={dir} />
+              <SortHead label={mobile ? "Hist" : "RS histogram"} active={false} dir={dir} />
             </div>
             {base.shown.map((r) => {
               const sp = spark(r.hist), rc = rsColor(r.rsv), retC = r.returnPct >= 0 ? SIG.up.c : SIG.down.c;
-              const mono = (size: number, color: string) => ({ fontFamily: MONO, fontSize: size, color, textAlign: "right" as const });
+              const mono = (size: number, color: string) => ({ fontFamily: MONO, fontSize: mobile ? Math.min(size, fs) : size, color, textAlign: "right" as const });
               const ident = (
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 13.5, color: "#eef3fa" }}>{r.symbol}</span>
-                  <span style={{ fontSize: 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{r.name}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 0 : 2, minWidth: 0 }}>
+                  <span style={{ fontFamily: MONO, fontSize: mobile ? 12 : 13.5, color: "#eef3fa" }}>{r.symbol}</span>
+                  <span style={{ fontSize: mobile ? 10.5 : 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{r.name}</span>
                 </div>
               );
               return (
-                <div key={r.symbol} data-reveal className="v2-row" style={{ display: "grid", gridTemplateColumns: cols, gap: 14, alignItems: "center", minHeight: 54, padding: "6px 20px", borderTop: "1px solid rgba(150,190,255,.06)", transition: "background .2s, opacity .8s ease, transform .9s cubic-bezier(.16,1,.3,1)" }}>
+                <div key={r.symbol} data-reveal className="v2-row" style={{ display: "grid", gridTemplateColumns: cols, gap, alignItems: "center", minHeight: mobile ? 38 : 54, padding: mobile ? `3px ${padX}px` : "6px 20px", borderTop: "1px solid rgba(150,190,255,.06)", transition: "background .2s, opacity .8s ease, transform .9s cubic-bezier(.16,1,.3,1)" }}>
                   <span style={mono(11, "#7f8ea3")}>{base.rank.get(r.symbol)}</span>
                   {mobile ? (
-                    <div style={pin}><Dot color={rc} size={8} style={{ flexShrink: 0 }} />{ident}</div>
+                    <div style={pin}><Dot color={rc} size={6} style={{ flexShrink: 0 }} />{ident}</div>
                   ) : (
                     <>
                       <div style={{ display: "grid", placeItems: "center" }}><Dot color={rc} size={8} /></div>
                       {ident}
                     </>
                   )}
-                  <span style={{ fontSize: 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{r.category}</span>
+                  {!mobile && <span style={{ fontSize: 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{r.category}</span>}
                   <span style={mono(13, "#d7e0ec")}>{num(r.latestClose, 2)}</span>
                   <span style={mono(13, retC)}>{pct(r.returnPct)}</span>
                   <span style={mono(13, rc)}>{r.rsv.toFixed(3)}</span>
                   <span style={mono(13, pulseColor(r.pulseV))}>{r.pulseV == null ? "—" : Math.round(r.pulseV) + "%"}</span>
-                  <Spark {...sp} style={{ width: "100%", height: 26 }} />
+                  <Spark {...sp} style={{ width: "100%", height: mobile ? 20 : 26 }} />
                 </div>
               );
             })}

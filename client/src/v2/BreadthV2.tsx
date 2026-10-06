@@ -15,7 +15,8 @@ const PAIRS: [string, number, number, string, string, string][] = [
 
 /** Daily log: rows per infinite-scroll page, column widths (shared by the pinned header and the body), cell ground */
 const LOG_PAGE = 60;
-const colW = (i: number) => (i === 0 ? 112 : 104);
+// Mobile uses dense columns (like the classic UI) so more of the log fits on screen
+const colW = (i: number, mobile: boolean) => (mobile ? (i === 0 ? 78 : 64) : i === 0 ? 112 : 104);
 const LOG_BG = "#03070e";
 
 const val = (r: SheetsCell[] | undefined, i: number) => (r && r[i] ? r[i].value : null);
@@ -96,11 +97,12 @@ function Breadth({ sh }: { sh: SheetsData }) {
   const gh = sh.groupHeaders || [];
   const hdr = sh.headers || [];
   const label: CSSProperties = { paddingBottom: 6, borderBottom: "1px solid rgba(150,190,255,.09)", fontFamily: MONO, fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", color: "#9fb0c6" };
-  const groupTh: CSSProperties = { fontFamily: MONO, fontWeight: 400, fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", padding: 10, borderRadius: 8 };
+  const groupTh: CSSProperties = { fontFamily: MONO, fontWeight: 400, fontSize: mobile ? 9.5 : 10.5, letterSpacing: mobile ? ".1em" : ".14em", textTransform: "uppercase", padding: mobile ? "6px 8px" : 10, borderRadius: mobile ? 6 : 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+  const cellPad = mobile ? "4px 6px" : "8px 10px";
 
   // Daily log: fixed column widths so the pinned header lines up with the body, and infinite scroll
-  const logTable: CSSProperties = { tableLayout: "fixed", width: hdr.reduce((w, _, i) => w + colW(i) + 2, 2), borderCollapse: "separate", borderSpacing: 2, fontSize: 12.5, fontFamily: MONO, fontVariantNumeric: "tabular-nums" };
-  const logCols = <colgroup>{hdr.map((_, i) => <col key={i} style={{ width: colW(i) }} />)}</colgroup>;
+  const logTable: CSSProperties = { tableLayout: "fixed", width: hdr.reduce((w, _, i) => w + colW(i, mobile) + 2, 2), borderCollapse: "separate", borderSpacing: 2, fontSize: mobile ? 11 : 12.5, fontFamily: MONO, fontVariantNumeric: "tabular-nums" };
+  const logCols = <colgroup>{hdr.map((_, i) => <col key={i} style={{ width: colW(i, mobile) }} />)}</colgroup>;
   const moreLog = rows.length > limit;
   useEffect(() => {
     const el = sentinel.current;
@@ -244,7 +246,7 @@ function Breadth({ sh }: { sh: SheetsData }) {
               </tr>
               <tr>
                 {hdr.map((h, i) => (
-                  <th key={i} style={{ position: i === 0 ? "sticky" : "static", left: 0, zIndex: i === 0 ? 3 : 1, background: LOG_BG, boxShadow: `0 0 0 2px ${LOG_BG}`, color: "#9fb0c6", fontFamily: "'Geist', sans-serif", fontWeight: 400, fontSize: 11.5, lineHeight: 1.3, textAlign: i === 0 ? "left" : "right", verticalAlign: "bottom", padding: "8px 10px" }}>
+                  <th key={i} style={{ position: i === 0 ? "sticky" : "static", left: 0, zIndex: i === 0 ? 3 : 1, background: LOG_BG, boxShadow: `0 0 0 2px ${LOG_BG}`, color: "#9fb0c6", fontFamily: "'Geist', sans-serif", fontWeight: 400, fontSize: mobile ? 10 : 11.5, lineHeight: 1.25, textAlign: i === 0 ? "left" : "right", verticalAlign: "bottom", padding: mobile ? "5px 6px" : "8px 10px" }}>
                     {h}
                   </th>
                 ))}
@@ -272,7 +274,7 @@ function Breadth({ sh }: { sh: SheetsData }) {
                         background: ci === 0 ? LOG_BG : c ? c.bg : "rgba(140,180,255,.035)",
                         boxShadow: ci === 0 ? `0 0 0 2px ${LOG_BG}` : "none",
                         color: ci === 0 ? "#dfe7f2" : c ? c.text : "#aebbcc", fontWeight: c?.bold ? 600 : 400,
-                        textAlign: ci === 0 ? "left" : "right", padding: "8px 10px", borderRadius: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        textAlign: ci === 0 ? "left" : "right", padding: cellPad, borderRadius: mobile ? 4 : 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                       }}>
                         {txt}
                       </td>

@@ -68,8 +68,10 @@ export default function StockRSV2() {
 
   const meta = data ? `${num(data.stocks.length)} US stocks · IBD-style RS percentile · ${num(filtered.length)} match` : "IBD-style RS percentile across the US market";
   // Mobile keeps every column at a fixed width and scrolls sideways; the RS ring + ticker cell stays pinned left
-  const cols = mobile ? "30px 196px 44px 44px 44px 76px 68px 84px 60px" : "30px 38px minmax(0,1.6fr) 48px 48px 48px 76px 72px 88px 64px";
-  const pin: CSSProperties = mobile ? { ...PIN_CELL, gap: 12 } : {};
+  const cols = mobile ? "20px 112px 34px 34px 34px 58px 50px 54px 46px" : "30px 38px minmax(0,1.6fr) 48px 48px 48px 76px 72px 88px 64px";
+  const pin: CSSProperties = mobile ? { ...PIN_CELL, gap: 8 } : {};
+  // Mobile is a dense terminal-style table (like the classic UI) so more rows and columns fit on screen
+  const gap = mobile ? 8 : 14, padX = mobile ? 12 : 20, fs = mobile ? 11.5 : 13, ringD = mobile ? 26 : 38;
   const rows = filtered.slice(0, limit);
 
   // Infinite scroll: load the next page as the end of the list nears the bottom of <main>.
@@ -113,7 +115,7 @@ export default function StockRSV2() {
           <div style={{ ...PANEL, boxShadow: undefined, overflow: "hidden" }}>
            <HScroll chevronTop={10}>
            <div style={{ width: mobile ? "max-content" : undefined, minWidth: "100%" }}>
-            <div style={{ display: "grid", gridTemplateColumns: cols, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid rgba(150,190,255,.10)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: cols, gap, alignItems: "center", padding: mobile ? `9px ${padX}px` : "12px 20px", borderBottom: "1px solid rgba(150,190,255,.10)" }}>
               <SortHead label="#" align="right" active={sort === "rank"} dir={dir} onClick={() => onSort("rank")} />
               {mobile ? (
                 <div style={pin}>
@@ -126,28 +128,28 @@ export default function StockRSV2() {
                   <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
                 </>
               )}
-              {([["rs1M", "1M"], ["rs3M", "3M"], ["rs6M", "6M"], ["price", "Price"], ["marketCap", "Mkt cap"], ["pctFrom52WkHigh", "% 52W high"], ["avgVol30", "Avg vol"]] as [SortKey, string][]).map(([k, l]) => (
+              {([["rs1M", "1M"], ["rs3M", "3M"], ["rs6M", "6M"], ["price", "Price"], ["marketCap", mobile ? "Cap" : "Mkt cap"], ["pctFrom52WkHigh", mobile ? "52WH" : "% 52W high"], ["avgVol30", mobile ? "Vol" : "Avg vol"]] as [SortKey, string][]).map(([k, l]) => (
                 <SortHead key={k} label={l} align="right" active={sort === k} dir={dir} onClick={() => onSort(k)} />
               ))}
             </div>
             {rows.map((x) => {
               const c = rc(x.rsPercentile);
-              const mono = (color: string) => ({ fontFamily: MONO, fontSize: 13, color, textAlign: "right" as const });
+              const mono = (color: string) => ({ fontFamily: MONO, fontSize: fs, color, textAlign: "right" as const });
               const hiC = x.pctFrom52WkHigh != null && x.pctFrom52WkHigh >= -5 ? SIG.up.c : "#b9b8b4";
               const ring = (
-                <div style={{ position: "relative", flexShrink: 0, width: 38, height: 38, borderRadius: "50%", background: `conic-gradient(${c} ${x.rsPercentile * 3.6}deg, rgba(140,180,255,.12) 0)` }}>
-                  <div style={{ position: "absolute", inset: 3, borderRadius: "50%", background: "#050a14", display: "grid", placeItems: "center", fontFamily: MONO, fontSize: 12, color: c }}>{x.rsPercentile}</div>
+                <div style={{ position: "relative", flexShrink: 0, width: ringD, height: ringD, borderRadius: "50%", background: `conic-gradient(${c} ${x.rsPercentile * 3.6}deg, rgba(140,180,255,.12) 0)` }}>
+                  <div style={{ position: "absolute", inset: mobile ? 2 : 3, borderRadius: "50%", background: "#050a14", display: "grid", placeItems: "center", fontFamily: MONO, fontSize: mobile ? 9.5 : 12, color: c }}>{x.rsPercentile}</div>
                 </div>
               );
               const ident = (
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 13.5, color: "#eef3fa" }}>{x.ticker}</span>
-                  <span style={{ fontSize: 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{x.industry || x.sector}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 0 : 2, minWidth: 0 }}>
+                  <span style={{ fontFamily: MONO, fontSize: mobile ? 12 : 13.5, color: "#eef3fa" }}>{x.ticker}</span>
+                  <span style={{ fontSize: mobile ? 10.5 : 12.5, color: "#8c9bb0", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{x.industry || x.sector}</span>
                 </div>
               );
               return (
-                <div key={x.ticker} data-reveal className="v2-row" style={{ display: "grid", gridTemplateColumns: cols, gap: 14, alignItems: "center", minHeight: 54, padding: "6px 20px", borderTop: "1px solid rgba(150,190,255,.06)", transition: "background .2s, opacity .8s ease, transform .9s cubic-bezier(.16,1,.3,1)" }}>
-                  <span style={{ ...mono("#7f8ea3"), fontSize: 11 }}>{x.rank}</span>
+                <div key={x.ticker} data-reveal className="v2-row" style={{ display: "grid", gridTemplateColumns: cols, gap, alignItems: "center", minHeight: mobile ? 38 : 54, padding: mobile ? `3px ${padX}px` : "6px 20px", borderTop: "1px solid rgba(150,190,255,.06)", transition: "background .2s, opacity .8s ease, transform .9s cubic-bezier(.16,1,.3,1)" }}>
+                  <span style={{ ...mono("#7f8ea3"), fontSize: mobile ? 10 : 11 }}>{x.rank}</span>
                   {mobile ? <div style={pin}>{ring}{ident}</div> : <>{ring}{ident}</>}
                   <span style={mono("#aebbcc")}>{num(x.rs1M)}</span>
                   <span style={mono("#aebbcc")}>{num(x.rs3M)}</span>
