@@ -1,0 +1,73 @@
+/* v2 "financial" UI — keyframes + the few rules inline styles can't express */
+
+@keyframes v2-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+@keyframes v2-spin { to { transform: rotate(360deg) } }
+@keyframes v2-blink { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+@keyframes v2-os-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,194,74,.8) }
+  70% { box-shadow: 0 0 0 8px rgba(255,194,74,0) }
+  100% { box-shadow: 0 0 0 0 rgba(255,194,74,0) }
+}
+
+.v2-root { font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; color: #e8eef6; -webkit-font-smoothing: antialiased; }
+.v2-root *, .v2-root *::before, .v2-root *::after { box-sizing: border-box; }
+.v2-root a { color: #cfe0f5; text-decoration: none; }
+.v2-root a:hover { color: #fff; }
+.v2-root input::placeholder { color: #6f7f95; }
+.v2-root ::selection { background: rgba(89,216,255,.3); }
+.v2-root button { font: inherit; }
+.v2-root button:focus-visible { outline: 1.5px solid rgba(150,190,255,.6); outline-offset: 2px; }
+
+/* The classic glass theme forces a custom cursor on `.glass *`; v2 uses the OS one */
+.glass .v2-root, .glass .v2-root * { cursor: auto !important; }
+.glass .v2-root button, .glass .v2-root [data-click] { cursor: pointer !important; }
+.glass .v2-root input { cursor: text !important; }
+.glass .v2-root [data-help] { cursor: help !important; }
+
+.v2-hw:hover { color: #fff !important; }
+.v2-row:hover { background: rgba(120,170,255,.06) !important; }
+.v2-ghost:hover { background: rgba(20,32,54,.8) !important; }
+
+.v2-noscroll { scrollbar-width: none; }
+.v2-noscroll::-webkit-scrollbar { display: none; }
+
+.v2-scroll { scrollbar-width: thin; scrollbar-color: rgba(150,190,255,.18) transparent; }
+
+/* Reveal-on-scroll: elements opt in via data-reveal, the shell sets --rv */
+[data-reveal] {
+  opacity: var(--rv, 1);
+  transform: translateY(calc((1 - var(--rv, 1)) * var(--rv-y, 16px)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-root *, .v2-root *::before, .v2-root *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  [data-reveal] { opacity: 1; transform: none; }
+}
+
+/* 5stars.setup logo (logo_handoff): static, walks / glances / blinks on hover only */
+.fs-logo{--accent:#f0533f;display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:#c9d5e4;min-width:0}
+.fs-logo svg{width:32px;height:32px;flex-shrink:0;overflow:visible}
+.fs-logo .fs-word{font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-size:17px;font-weight:500;letter-spacing:-0.045em;white-space:nowrap;transition:color .2s}
+.fs-logo .fs-word b{font-weight:500;color:var(--accent)}
+.fs-logo .fs-body,.fs-logo .fs-leg,.fs-logo .fs-iris,.fs-logo .fs-lid{transform-box:fill-box}
+.fs-logo .fs-body{transform-origin:center}
+.fs-logo .fs-leg.l{transform-origin:70% 0}
+.fs-logo .fs-leg.r{transform-origin:30% 0}
+.fs-logo .fs-iris{transform-origin:center}
+.fs-logo .fs-lid{transform-origin:50% 0;transform:scaleY(0)}
+.fs-logo:hover .fs-word{color:#eef3fa}
+.fs-logo:hover .fs-body{animation:fs-bob 1.2s ease-in-out infinite}
+.fs-logo:hover .fs-leg.l{animation:fs-legL 1.2s ease-in-out infinite}
+.fs-logo:hover .fs-leg.r{animation:fs-legR 1.2s ease-in-out infinite}
+.fs-logo:hover .fs-iris{animation:fs-glance 2.4s ease-in-out infinite}
+.fs-logo:hover .fs-lid{animation:fs-lid 2.4s .3s 1}
+@keyframes fs-bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-4px) rotate(3deg)}}
+@keyframes fs-legL{0%,100%{transform:rotate(12deg)}50%{transform:rotate(-12deg)}}
+@keyframes fs-legR{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}}
+@keyframes fs-glance{0%,20%,100%{transform:translate(0,0)}35%,55%{transform:translate(7px,-4px)}70%,85%{transform:translate(-6px,1px)}}
+@keyframes fs-lid{0%,4%,12%,100%{transform:scaleY(0)}7%,9%{transform:scaleY(2)}}
+@media (prefers-reduced-motion:reduce){.fs-logo:hover *{animation:none!important}}

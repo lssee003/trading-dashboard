@@ -10,7 +10,7 @@ import { AppHeader } from "../components/AppHeader";
 const IS_STATIC = import.meta.env.VITE_DATA_MODE === "static";
 
 /* ── Column indices for the breadth table ── */
-const COL = {
+export const COL = {
   DATE: 0,
   UP_4_TODAY: 1,
   DOWN_4_TODAY: 2,
@@ -55,6 +55,14 @@ const THEME_COLORS = {
     lightRed: { bg: "rgba(255, 23, 68, 0.10)", text: "#f4bcc4" },
     yellow: { bg: "rgba(255, 171, 0, 0.14)", text: "#fde68a" },
   },
+  /* v2 "financial" UI — tints over the opaque #050a14 log container */
+  v2: {
+    brightGreen: { bg: "rgba(63,224,166,.12)", text: "#8ff0cc" },
+    darkGreen: { bg: "rgba(63,224,166,.26)", text: "#bdf7e1" },
+    red: { bg: "rgba(255,92,92,.22)", text: "#ffb8b8" },
+    lightRed: { bg: "rgba(255,92,92,.10)", text: "#f5b0b0" },
+    yellow: { bg: "rgba(255,194,74,.16)", text: "#ffdc96" },
+  },
 };
 
 function getNumVal(row: SheetsCell[], ci: number): number | null {
@@ -63,11 +71,11 @@ function getNumVal(row: SheetsCell[], ci: number): number | null {
 }
 
 /** Compute conditional formatting color for a cell based on the rules */
-function computeCellColor(row: SheetsCell[], colIdx: number, theme: string): CellColorResult {
+export function computeCellColor(row: SheetsCell[], colIdx: number, theme: string): CellColorResult {
   const val = row[colIdx]?.value;
   if (val === null || val === undefined || typeof val === "string") return null;
   const v = val as number;
-  const c = theme === "glass" ? THEME_COLORS.glass : theme !== "light" ? THEME_COLORS.dark : THEME_COLORS.light;
+  const c = theme === "v2" ? THEME_COLORS.v2 : theme === "glass" ? THEME_COLORS.glass : theme !== "light" ? THEME_COLORS.dark : THEME_COLORS.light;
 
   const up4 = getNumVal(row, COL.UP_4_TODAY);
   const down4 = getNumVal(row, COL.DOWN_4_TODAY);
@@ -166,7 +174,7 @@ interface SignificantEvent {
   description: string;
 }
 
-interface BreadthAnalysis {
+export interface BreadthAnalysis {
   regime: { signal: "GREEN" | "AMBER" | "RED"; label: string };
   primaryTrend: string;
   primary: { up: number; down: number; bullish: boolean; label: string; trajectory: string };
@@ -214,7 +222,7 @@ function getRowDate(row: SheetsCell[]): string | undefined {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | null {
+export function generateBreadthAnalysis(dataRows: SheetsCell[][]): BreadthAnalysis | null {
   const validRows = getValidRows(dataRows);
   if (validRows.length === 0) return null;
 
