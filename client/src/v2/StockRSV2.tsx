@@ -20,7 +20,8 @@ export default function StockRSV2() {
   const { data } = useStocks();
 
   const [view, setView] = useState<"stocks" | "industries">("stocks");
-  const [sector, setSector] = useState("All");
+  // Selected sectors; empty = all sectors
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [minRS, setMinRS] = useState(0);
   const [minCap, setMinCap] = useState(2e8);
   const [minVol, setMinVol] = useState(5e5);
@@ -38,7 +39,7 @@ export default function StockRSV2() {
     if (!data) return [];
     const q = query.trim().toLowerCase();
     const items = data.stocks.filter((x) =>
-      (sector === "All" || x.sector === sector) &&
+      (!picked.size || picked.has(x.sector)) &&
       (!minRS || x.rsPercentile >= minRS) &&
       (!minCap || (x.marketCap != null && x.marketCap >= minCap)) &&
       (!minVol || (x.avgVol30 != null && x.avgVol30 >= minVol)) &&
@@ -50,16 +51,27 @@ export default function StockRSV2() {
       if (y == null) return -1;
       return (typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number)) * d;
     });
-  }, [data, sector, minRS, minCap, minVol, query, sort, dir]);
+  }, [data, picked, minRS, minCap, minVol, query, sort, dir]);
 
   const industries = useMemo(() => {
     if (!data || view !== "industries") return [];
     const q = query.trim().toLowerCase();
     return (data.industries || [])
-      .filter((g) => (sector === "All" || g.sector === sector) && (!q || g.industry.toLowerCase().includes(q) || g.tickers.some((t) => t.toLowerCase().includes(q))))
+      .filter((g) => (!picked.size || picked.has(g.sector)) && (!q || g.industry.toLowerCase().includes(q) || g.tickers.some((t) => t.toLowerCase().includes(q))))
       .sort((a, b) => a.rank - b.rank);
-  }, [data, view, sector, query]);
+  }, [data, view, picked, query]);
   const rsMap = useMemo(() => new Map((data?.stocks ?? []).map((x) => [x.ticker, x.rsPercentile])), [data]);
+
+  // "All sectors" selects everything. From the all state a tap isolates that sector; after that taps toggle,
+  // and clearing the last one (or picking every one) falls back to all.
+  const pickSector = (x: string) => {
+    setLimit(PAGE);
+    setOpenInd(null);
+    if (x === "All") return setPicked(new Set());
+    const next = new Set(picked.size ? picked : []);
+    if (next.has(x)) next.delete(x); else next.add(x);
+    setPicked(next.size === sectors.length ? new Set() : next);
+  };
 
   const onSort = (k: SortKey) => {
     setLimit(PAGE);
@@ -74,7 +86,6 @@ export default function StockRSV2() {
   // Mobile is a dense terminal-style table (like the classic UI) so more rows and columns fit on screen
   const gap = mobile ? 8 : 14, padX = mobile ? 12 : 20, fs = mobile ? 11.5 : 13, ringD = mobile ? 26 : 38;
   const rows = filtered.slice(0, limit);
-  const tickers = useMemo(() => filtered.map((x) => x.ticker), [filtered]);
 
   // Infinite scroll: load the next page as the end of the list nears the bottom of <main>.
   // Re-observing after every page re-checks, so tall screens keep filling until the sentinel is out of range.
@@ -100,9 +111,9 @@ export default function StockRSV2() {
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: -8 }}>
         {["All", ...sectors].map((x) => {
-          const on = x === sector;
+          const on = !picked.size || picked.has(x);
           return (
-            <button key={x} onClick={() => { setSector(x); setLimit(PAGE); setOpenInd(null); }} aria-pressed={on}
+            <button key={x} onClick={() => pickSector(x)} aria-pressed={on}
               style={{ flexShrink: 0, height: 30, padding: "0 13px", borderRadius: 15, border: `1px solid ${on ? "rgba(239,238,233,.5)" : "rgba(255,255,255,.1)"}`, background: on ? "rgba(239,238,233,.1)" : "transparent", color: on ? "#f2f1ed" : "#a1a1a6", fontFamily: MONO, fontSize: 11, letterSpacing: ".04em", cursor: "pointer", whiteSpace: "nowrap", transition: "background .3s, color .3s, border-color .3s" }}>
               {x === "All" ? "All sectors" : x}
             </button>
@@ -123,14 +134,14 @@ export default function StockRSV2() {
                 <div style={pin}>
                   <SortHead label="RS" active={sort === "rsPercentile"} dir={dir} onClick={() => onSort("rsPercentile")} />
                   <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
-                  <ExportMenu tickers={tickers} sheet />
+                  <ExportMenu stocks={filtered} sheet />
                 </div>
               ) : (
                 <>
                   <SortHead label="RS" align="center" active={sort === "rsPercentile"} dir={dir} onClick={() => onSort("rsPercentile")} />
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
-                    <ExportMenu tickers={tickers} />
+                    <ExportMenu stocks={filtered} />
                   </div>
                 </>
               )}
@@ -218,26 +229,34 @@ export default function StockRSV2() {
 
 /**
  * Export icon beside the Ticker header: opens a dropdown that copies or downloads the top N of the
- * filtered + sorted tickers as a comma-separated list. Portalled to <body> so the table's overflow
+ * filtered + sorted tickers as a comma-separated list — either every stock at or above a minimum RS, or the
+ * top N. Nothing is preselected; the two are exclusive, so picking one dims the other. Portalled to <body> so the table's overflow
  * can't clip it; on phones (`sheet`) it becomes a bottom sheet with large touch targets.
  */
-function ExportMenu({ tickers, sheet = false }: { tickers: string[]; sheet?: boolean }) {
+function ExportMenu({ stocks, sheet = false }: { stocks: RSStock[]; sheet?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [preset, setPreset] = useState<50 | 100 | 0>(50);
+  const [minRS, setMinRS] = useState<0 | 95 | 90 | 85 | -1 | null>(null);
+  const [customRS, setCustomRS] = useState("80");
+  const [preset, setPreset] = useState<50 | 100 | 0 | null>(null);
+  const mode = minRS != null ? "rs" : preset != null ? "top" : null;
   const [custom, setCustom] = useState("250");
   const [flash, setFlash] = useState("");
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
+  const rsFloor = minRS === -1 ? Math.min(99, Math.max(1, Math.floor(Number(customRS)) || 1)) : minRS ?? 0;
+  const above = (t: number) => (t ? stocks.filter((x) => x.rsPercentile >= t).length : stocks.length);
   const n = preset || Math.max(1, Math.floor(Number(custom)) || 1);
-  const out = tickers.slice(0, n);
+  const out = (mode === "rs" ? stocks.filter((x) => !rsFloor || x.rsPercentile >= rsFloor) : mode === "top" ? stocks.slice(0, n) : []).map((x) => x.ticker);
+  const pickRS = (v: NonNullable<typeof minRS>) => { setMinRS(v); setPreset(null); };
+  const pickTop = (v: NonNullable<typeof preset>) => { setPreset(v); setMinRS(null); };
   const text = out.join(",");
 
   // Anchor the dropdown under the icon, kept inside the viewport
   useLayoutEffect(() => {
     if (!open || sheet || !btnRef.current) return;
-    const r = btnRef.current.getBoundingClientRect(), W = 280;
+    const r = btnRef.current.getBoundingClientRect(), W = 300;
     setPos({ top: r.bottom + 8, left: Math.max(12, Math.min(r.left - 12, window.innerWidth - W - 12)) });
   }, [open, sheet]);
 
@@ -279,10 +298,14 @@ function ExportMenu({ tickers, sheet = false }: { tickers: string[]; sheet?: boo
   const h = sheet ? 44 : 34;
   const field: CSSProperties = { height: h, borderRadius: h / 2, border: "1px solid rgba(150,190,255,.18)", background: "rgba(8,14,26,.8)", color: "#eef3fa", fontFamily: MONO, fontSize: sheet ? 13 : 11.5 };
   const action: CSSProperties = { ...field, flex: 1, letterSpacing: ".04em", cursor: out.length ? "pointer" : "not-allowed", opacity: out.length ? 1 : 0.45 };
+  // The inactive filter stays tappable (tapping it switches modes) but is blacked out
+  const section: CSSProperties = { display: "flex", flexDirection: "column", gap: 10, transition: "opacity .25s, filter .25s" };
+  const dim: CSSProperties = { opacity: 0.28, filter: "grayscale(1)" };
+  const tile = (on: boolean): CSSProperties => ({ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", height: sheet ? 44 : 34, padding: 0, borderRadius: 10, border: `1px solid ${on ? "#eef4ff" : "rgba(150,190,255,.14)"}`, background: on ? "#eef4ff" : "rgba(8,14,26,.8)", color: on ? "#04070d" : "#c4cfdd", fontSize: sheet ? 13 : 12, cursor: "pointer", transition: "background .25s, color .25s" });
   const label: CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "#7f8ea3" };
   const panel: CSSProperties = sheet
     ? { position: "fixed", left: 0, right: 0, bottom: 0, padding: "18px 16px calc(18px + env(safe-area-inset-bottom))", borderRadius: "18px 18px 0 0", borderTop: "1px solid rgba(150,190,255,.18)" }
-    : { position: "fixed", top: pos.top, left: pos.left, width: 280, padding: 14, borderRadius: 14, border: "1px solid rgba(150,190,255,.18)" };
+    : { position: "fixed", top: pos.top, left: pos.left, width: 300, padding: 14, borderRadius: 14, border: "1px solid rgba(150,190,255,.18)" };
 
   return (
     <>
@@ -298,17 +321,44 @@ function ExportMenu({ tickers, sheet = false }: { tickers: string[]; sheet?: boo
           <div ref={popRef} role="dialog" aria-label="Export tickers"
             style={{ ...panel, zIndex: 1000, display: "flex", flexDirection: "column", gap: 12, background: "rgba(7,12,23,.96)", WebkitBackdropFilter: "blur(16px)", backdropFilter: "blur(16px)", boxShadow: "0 18px 50px rgba(0,0,0,.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={label}>Export top</span>
+              <span style={label}>Export</span>
               <span aria-live="polite" style={{ fontFamily: MONO, fontSize: 11, color: flash ? SIG.up.c : "#7f8ea3" }}>
-                {flash || `${num(out.length)} of ${num(tickers.length)} filtered`}
+                {flash || (mode ? `${num(out.length)} of ${num(stocks.length)} filtered${mode === "rs" && rsFloor ? ` · RS ${rsFloor}+` : ""}` : `${num(stocks.length)} filtered · pick one`)}
               </span>
             </div>
+            <div style={{ ...section, ...(mode === "top" ? dim : null) }}>
+            <span style={label}>Min RS</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {([[0, "All"], [95, "95+"], [90, "90+"], [85, "85+"], [-1, "Custom"]] as const).map(([v, l]) => {
+                const on = v === minRS;
+                return (
+                  <button key={v} onClick={() => pickRS(v)} aria-pressed={on}
+                    style={{ ...tile(on), flexDirection: "column", gap: 1, height: sheet ? 48 : 40 }}>
+                    <span style={{ fontSize: sheet ? 13 : 12 }}>{l}</span>
+                    <span style={{ fontFamily: MONO, fontSize: sheet ? 10.5 : 9.5, opacity: 0.65 }}>{v === -1 ? (minRS === -1 ? num(above(rsFloor)) : "…") : num(above(v))}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {minRS === -1 && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="number" inputMode="numeric" min={1} max={99} value={customRS} onChange={(e) => setCustomRS(e.target.value)} aria-label="Custom minimum RS"
+                  style={{ ...field, width: 0, flex: 1, minWidth: 60, padding: "0 12px", fontSize: sheet ? 16 : 12, outline: "none" }} />
+                <span style={{ fontFamily: MONO, fontSize: 11, color: "#7f8ea3", whiteSpace: "nowrap" }}>RS {rsFloor}+ · {num(above(rsFloor))}</span>
+              </div>
+            )}
+            </div>
+            <div style={{ ...section, ...(mode === "rs" ? dim : null) }}>
+            <span style={label}>Top</span>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <Seg size={sheet ? "md" : "sm"} padX={sheet ? 16 : 12} opts={[{ value: 50 as const, label: "50" }, { value: 100 as const, label: "100" }, { value: 0 as const, label: "Custom" }]} value={preset} onChange={setPreset} />
+              {([[50, "50"], [100, "100"], [0, "Custom"]] as const).map(([v, l]) => (
+                <button key={v} onClick={() => pickTop(v)} aria-pressed={v === preset} style={tile(v === preset)}>{l}</button>
+              ))}
               {preset === 0 && (
                 <input type="number" inputMode="numeric" min={1} value={custom} onChange={(e) => setCustom(e.target.value)} aria-label="Custom export count" autoFocus={!sheet}
                   style={{ ...field, width: 0, flex: 1, minWidth: 60, padding: "0 12px", fontSize: sheet ? 16 : 12, outline: "none" }} />
               )}
+            </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={copy} disabled={!out.length} style={action}>Copy</button>
