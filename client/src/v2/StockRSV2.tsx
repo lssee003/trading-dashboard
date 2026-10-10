@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import type { RSStock, RSStocksResponse } from "@shared/schema";
 import { useV2, PageHead, Seg, SearchBox, Loading, SortHead, HScroll, PIN_CELL } from "./ui";
@@ -73,6 +74,7 @@ export default function StockRSV2() {
   // Mobile is a dense terminal-style table (like the classic UI) so more rows and columns fit on screen
   const gap = mobile ? 8 : 14, padX = mobile ? 12 : 20, fs = mobile ? 11.5 : 13, ringD = mobile ? 26 : 38;
   const rows = filtered.slice(0, limit);
+  const tickers = useMemo(() => filtered.map((x) => x.ticker), [filtered]);
 
   // Infinite scroll: load the next page as the end of the list nears the bottom of <main>.
   // Re-observing after every page re-checks, so tall screens keep filling until the sentinel is out of range.
@@ -121,11 +123,15 @@ export default function StockRSV2() {
                 <div style={pin}>
                   <SortHead label="RS" active={sort === "rsPercentile"} dir={dir} onClick={() => onSort("rsPercentile")} />
                   <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
+                  <ExportMenu tickers={tickers} sheet />
                 </div>
               ) : (
                 <>
                   <SortHead label="RS" align="center" active={sort === "rsPercentile"} dir={dir} onClick={() => onSort("rsPercentile")} />
-                  <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <SortHead label="Ticker" active={sort === "ticker"} dir={dir} onClick={() => onSort("ticker")} />
+                    <ExportMenu tickers={tickers} />
+                  </div>
                 </>
               )}
               {([["rs1M", "1M"], ["rs3M", "3M"], ["rs6M", "6M"], ["price", "Price"], ["marketCap", mobile ? "Cap" : "Mkt cap"], ["pctFrom52WkHigh", mobile ? "52WH" : "% 52W high"], ["avgVol30", mobile ? "Vol" : "Avg vol"]] as [SortKey, string][]).map(([k, l]) => (
@@ -207,5 +213,111 @@ export default function StockRSV2() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Export icon beside the Ticker header: opens a dropdown that copies or downloads the top N of the
+ * filtered + sorted tickers as a comma-separated list. Portalled to <body> so the table's overflow
+ * can't clip it; on phones (`sheet`) it becomes a bottom sheet with large touch targets.
+ */
+function ExportMenu({ tickers, sheet = false }: { tickers: string[]; sheet?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [preset, setPreset] = useState<50 | 100 | 0>(50);
+  const [custom, setCustom] = useState("250");
+  const [flash, setFlash] = useState("");
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  const n = preset || Math.max(1, Math.floor(Number(custom)) || 1);
+  const out = tickers.slice(0, n);
+  const text = out.join(",");
+
+  // Anchor the dropdown under the icon, kept inside the viewport
+  useLayoutEffect(() => {
+    if (!open || sheet || !btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect(), W = 280;
+    setPos({ top: r.bottom + 8, left: Math.max(12, Math.min(r.left - 12, window.innerWidth - W - 12)) });
+  }, [open, sheet]);
+
+  // Close on outside tap, Escape, or (desktop) scroll/resize, since the anchor would move away
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!popRef.current?.contains(t) && !btnRef.current?.contains(t)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const shut = () => setOpen(false);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    if (!sheet) { window.addEventListener("resize", shut); document.addEventListener("scroll", shut, true); }
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+      window.removeEventListener("resize", shut);
+      document.removeEventListener("scroll", shut, true);
+    };
+  }, [open, sheet]);
+
+  const note = (msg: string) => { setFlash(msg); window.setTimeout(() => setFlash(""), 1800); };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); note(`Copied ${out.length}`); }
+    catch { note("Copy blocked"); }
+  };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stocks-top${out.length}-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    note(`Saved ${out.length}`);
+  };
+
+  const h = sheet ? 44 : 34;
+  const field: CSSProperties = { height: h, borderRadius: h / 2, border: "1px solid rgba(150,190,255,.18)", background: "rgba(8,14,26,.8)", color: "#eef3fa", fontFamily: MONO, fontSize: sheet ? 13 : 11.5 };
+  const action: CSSProperties = { ...field, flex: 1, letterSpacing: ".04em", cursor: out.length ? "pointer" : "not-allowed", opacity: out.length ? 1 : 0.45 };
+  const label: CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "#7f8ea3" };
+  const panel: CSSProperties = sheet
+    ? { position: "fixed", left: 0, right: 0, bottom: 0, padding: "18px 16px calc(18px + env(safe-area-inset-bottom))", borderRadius: "18px 18px 0 0", borderTop: "1px solid rgba(150,190,255,.18)" }
+    : { position: "fixed", top: pos.top, left: pos.left, width: 280, padding: 14, borderRadius: 14, border: "1px solid rgba(150,190,255,.18)" };
+
+  return (
+    <>
+      <button ref={btnRef} onClick={() => setOpen((o) => !o)} aria-label="Export tickers" aria-haspopup="dialog" aria-expanded={open} title="Export tickers"
+        style={{ flexShrink: 0, display: "grid", placeItems: "center", width: sheet ? 28 : 24, height: sheet ? 28 : 24, margin: sheet ? "-4px 0" : "-6px 0", padding: 0, borderRadius: 7, border: `1px solid ${open ? "rgba(239,238,233,.4)" : "transparent"}`, background: open ? "rgba(239,238,233,.1)" : "transparent", color: open ? "#f2f1ed" : "#86868b", cursor: "pointer", transition: "color .2s, background .2s, border-color .2s" }}>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M8 10V2M5 5l3-3 3 3M3 9v4a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9" />
+        </svg>
+      </button>
+      {open && createPortal(
+        <>
+          {sheet && <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,.5)" }} />}
+          <div ref={popRef} role="dialog" aria-label="Export tickers"
+            style={{ ...panel, zIndex: 1000, display: "flex", flexDirection: "column", gap: 12, background: "rgba(7,12,23,.96)", WebkitBackdropFilter: "blur(16px)", backdropFilter: "blur(16px)", boxShadow: "0 18px 50px rgba(0,0,0,.6)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={label}>Export top</span>
+              <span aria-live="polite" style={{ fontFamily: MONO, fontSize: 11, color: flash ? SIG.up.c : "#7f8ea3" }}>
+                {flash || `${num(out.length)} of ${num(tickers.length)} filtered`}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Seg size={sheet ? "md" : "sm"} padX={sheet ? 16 : 12} opts={[{ value: 50 as const, label: "50" }, { value: 100 as const, label: "100" }, { value: 0 as const, label: "Custom" }]} value={preset} onChange={setPreset} />
+              {preset === 0 && (
+                <input type="number" inputMode="numeric" min={1} value={custom} onChange={(e) => setCustom(e.target.value)} aria-label="Custom export count" autoFocus={!sheet}
+                  style={{ ...field, width: 0, flex: 1, minWidth: 60, padding: "0 12px", fontSize: sheet ? 16 : 12, outline: "none" }} />
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={copy} disabled={!out.length} style={action}>Copy</button>
+              <button onClick={download} disabled={!out.length} style={action}>Download .txt</button>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   );
 }
