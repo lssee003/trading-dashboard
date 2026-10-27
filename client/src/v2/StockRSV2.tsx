@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { RSStock, RSStocksResponse } from "@shared/schema";
 import { useV2, PageHead, Seg, SearchBox, Loading, SortHead, HScroll, PIN_CELL } from "./ui";
 import { SIG, MONO, PANEL, num, big, rsPctSig } from "./tokens";
+import FlowSwarmV2 from "./FlowSwarmV2";
 
 type SortKey = "rank" | "rsPercentile" | "ticker" | "rs1M" | "rs3M" | "rs6M" | "price" | "marketCap" | "pctFrom52WkHigh" | "avgVol30";
 
@@ -19,7 +20,7 @@ export default function StockRSV2() {
   const mobile = m0 || contentW < 940;
   const { data } = useStocks();
 
-  const [view, setView] = useState<"stocks" | "industries">("stocks");
+  const [view, setView] = useState<"stocks" | "industries" | "flow">("stocks");
   // Selected sectors; empty = all sectors
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [minRS, setMinRS] = useState(0);
@@ -99,29 +100,39 @@ export default function StockRSV2() {
     return () => io.disconnect();
   }, [more, limit, mainRef]);
 
-  return (
-    <div data-screen-label="Stocks" style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: 10 }}>
-      <PageHead meta={meta} italic="Stock" after="relative strength" />
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <Seg padX={13} opts={[{ value: "stocks", label: "Stocks" }, { value: "industries", label: "Industries" }]} value={view} onChange={setView} />
-        <Seg padX={13} opts={[[0, "Any RS"], [70, "70+"], [80, "80+"], [90, "90+"]].map(([v, l]) => ({ value: v as number, label: l as string }))} value={minRS} onChange={resetLimit(setMinRS)} />
-        <Seg padX={13} opts={[[0, "Any cap"], [2e8, "200M+"], [1e9, "1B+"], [1e10, "10B+"]].map(([v, l]) => ({ value: v as number, label: l as string }))} value={minCap} onChange={resetLimit(setMinCap)} />
-        <Seg padX={13} opts={[[0, "Any volume"], [5e5, "500K+"], [1e6, "1M+"], [5e6, "5M+"]].map(([v, l]) => ({ value: v as number, label: l as string }))} value={minVol} onChange={resetLimit(setMinVol)} />
-        <SearchBox value={query} onChange={resetLimit(setQuery)} placeholder="Search ticker or industry" />
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: -8 }}>
-        {["All", ...sectors].map((x) => {
-          const on = !picked.size || picked.has(x);
-          return (
-            <button key={x} onClick={() => pickSector(x)} aria-pressed={on}
-              style={{ flexShrink: 0, height: 30, padding: "0 13px", borderRadius: 15, border: `1px solid ${on ? "rgba(239,238,233,.5)" : "rgba(255,255,255,.1)"}`, background: on ? "rgba(239,238,233,.1)" : "transparent", color: on ? "#f2f1ed" : "#a1a1a6", fontFamily: MONO, fontSize: 11, letterSpacing: ".04em", cursor: "pointer", whiteSpace: "nowrap", transition: "background .3s, color .3s, border-color .3s" }}>
-              {x === "All" ? "All sectors" : x}
-            </button>
-          );
-        })}
-      </div>
+  const viewSeg = <Seg padX={13} opts={[{ value: "stocks", label: "Stocks" }, { value: "industries", label: "Industries" }, { value: "flow", label: "Flow" }]} value={view} onChange={setView} />;
 
+  return (
+    <div data-screen-label="Stocks" style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: view === "flow" ? 0 : 10 }}>
+      {/* Flow carries its own title (it changes as you drill in) and hosts the view switch, so the page head and filter rows give their room to the stage */}
+      {view !== "flow" && (
+        <>
+          <PageHead meta={meta} italic="Stock" after="relative strength" />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            {viewSeg}
+            <Seg padX={13} opts={[[0, "Any RS"], [70, "70+"], [80, "80+"], [90, "90+"]].map(([v, l]) => ({ value: v as number, label: l as string }))} value={minRS} onChange={resetLimit(setMinRS)} />
+            <Seg padX={13} opts={[[0, "Any cap"], [2e8, "200M+"], [1e9, "1B+"], [1e10, "10B+"]].map(([v, l]) => ({ value: v as number, label: l as string }))} value={minCap} onChange={resetLimit(setMinCap)} />
+            <Seg padX={13} opts={[[0, "Any volume"], [5e5, "500K+"], [1e6, "1M+"], [5e6, "5M+"]].map(([v, l]) => ({ value: v as number, label: l as string }))} value={minVol} onChange={resetLimit(setMinVol)} />
+            <SearchBox value={query} onChange={resetLimit(setQuery)} placeholder="Search ticker or industry" />
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: -8 }}>
+            {["All", ...sectors].map((x) => {
+              const on = !picked.size || picked.has(x);
+              return (
+                <button key={x} onClick={() => pickSector(x)} aria-pressed={on}
+                  style={{ flexShrink: 0, height: 30, padding: "0 13px", borderRadius: 15, border: `1px solid ${on ? "rgba(239,238,233,.5)" : "rgba(255,255,255,.1)"}`, background: on ? "rgba(239,238,233,.1)" : "transparent", color: on ? "#f2f1ed" : "#a1a1a6", fontFamily: MONO, fontSize: 11, letterSpacing: ".04em", cursor: "pointer", whiteSpace: "nowrap", transition: "background .3s, color .3s, border-color .3s" }}>
+                  {x === "All" ? "All sectors" : x}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {!data && view === "flow" && viewSeg}
       {!data && <Loading>Loading ~5,900 stock ratings</Loading>}
+
+      {data && view === "flow" && <FlowSwarmV2 stocks={data.stocks} viewSwitch={viewSeg} />}
 
       {data && view === "stocks" && (
         <>

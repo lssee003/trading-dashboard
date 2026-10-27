@@ -72,3 +72,91 @@
 @keyframes fs-glance{0%,20%,100%{transform:translate(0,0)}35%,55%{transform:translate(7px,-4px)}70%,85%{transform:translate(-6px,1px)}}
 @keyframes fs-lid{0%,4%,12%,100%{transform:scaleY(0)}7%,9%{transform:scaleY(2)}}
 @media (prefers-reduced-motion:reduce){.fs-logo:hover *{animation:none!important}}
+
+/* ── Capital flow (Stocks → Flow): WebGL stage + overlay, see flowSwarm.ts ──
+   Button rules are scoped under .fsw so they outrank `.v2-root button { font: inherit }` */
+.fsw{--fsw-up:#3fe0a6;--fsw-mid:#ffc24a;--fsw-down:#ff5c5c;--fsw-blue:#59d8ff;--fsw-fg:#e6edf8;--fsw-muted:#8796ad;--fsw-dim:#56647a;--fsw-line:rgba(150,190,255,.14);
+  --fsw-field:radial-gradient(ellipse 58% 62% at 45% 50%,rgba(3,7,14,.97) 0%,rgba(3,7,14,.93) 46%,rgba(3,7,14,.6) 76%,rgba(3,7,14,0) 100%);
+  position:relative;height:100%;overflow:hidden;background:var(--fsw-field);color:var(--fsw-fg);font-family:'Geist',ui-sans-serif,system-ui,sans-serif}
+.fsw-stage{position:absolute;inset:0;overflow:hidden}
+/* Soft edges instead of a frame: anything drifting toward the border fades out rather than being cut */
+.fsw-cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:pan-y;cursor:grab;-webkit-mask-image:radial-gradient(ellipse 64% 66% at 45% 50%,#000 74%,transparent 100%);mask-image:radial-gradient(ellipse 64% 66% at 45% 50%,#000 74%,transparent 100%)}
+.fsw-cv:active{cursor:grabbing}
+.fsw-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.fsw-lab{position:absolute;left:0;top:0;font:10.5px/1.2 'JetBrains Mono',monospace;color:var(--fsw-muted);white-space:nowrap;text-shadow:0 0 8px #000,0 0 2px #000;transition:opacity .35s;will-change:transform}
+.fsw-lab b{color:var(--fsw-fg);font-weight:500}
+.fsw-lab.big{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fsw-up)}
+.fsw-lab.tag{color:var(--fsw-fg);background:rgba(3,7,14,.72);border:1px solid var(--fsw-line);padding:2px 6px;border-radius:5px}
+.fsw-lab.ind{color:var(--fsw-muted)}
+.fsw-glass{background:rgba(7,13,26,.66);border:1px solid var(--fsw-line);border-radius:14px;-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.fsw-kick{font:500 10.5px 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--fsw-muted)}
+.fsw-dim{color:var(--fsw-dim)}
+.fsw-top{position:absolute;left:28px;top:74px;max-width:380px;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.fsw-top h2{margin:0;font:400 clamp(30px,3vw,42px)/.95 'Instrument Serif',Georgia,serif;text-wrap:balance}
+.fsw-top h2 em{color:var(--fsw-blue)}
+.fsw-top p{margin:0;color:var(--fsw-muted);font-size:12.5px;line-height:1.5;text-shadow:0 0 12px #000}
+.fsw-top .fsw-kick,.fsw-top h2{text-shadow:0 0 12px #000,0 0 3px #000}
+.fsw-navrow{position:absolute;top:19px;left:50%;transform:translateX(-50%);display:flex;gap:14px;align-items:center;pointer-events:none}
+.fsw .fsw-back{pointer-events:auto;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--fsw-fg);padding:9px 14px;cursor:pointer;border-radius:10px;white-space:nowrap;flex-shrink:0}
+.fsw .fsw-back:hover{background:rgba(89,216,255,.16)}
+.fsw-hint{font:500 10.5px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--fsw-muted);text-shadow:0 0 8px #000;white-space:nowrap}
+.fsw-tip{position:absolute;left:0;top:0;padding:10px 12px;font:11px/1.6 'JetBrains Mono',monospace;color:var(--fsw-fg);pointer-events:none;white-space:nowrap;font-variant-numeric:tabular-nums;border-radius:10px}
+.fsw-tip b{font-weight:500;font-size:12.5px}
+.fsw-tip .d{color:var(--fsw-muted)}
+.fsw-story{position:absolute;left:28px;bottom:96px;max-width:min(560px,calc(100% - 380px));padding:13px 17px 14px;display:flex;flex-direction:column;gap:6px}
+.fsw-story p{margin:0;font:400 clamp(18px,1.6vw,23px)/1.22 'Instrument Serif',Georgia,serif;text-wrap:balance}
+.fsw-story .g{color:var(--fsw-up)}
+.fsw-story .r{color:var(--fsw-down)}
+.fsw-story.flash p{animation:fsw-in .7s cubic-bezier(.16,1,.3,1)}
+@keyframes fsw-in{from{opacity:.15;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fsw-log{position:absolute;right:28px;top:16px;bottom:20px;width:290px;padding:16px 16px 12px;display:flex;flex-direction:column;gap:11px;overflow:hidden}
+.fsw-log h3{margin:0;font:400 21px 'Instrument Serif',Georgia,serif}
+.fsw-sum{display:flex;gap:14px;font:12px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.fsw-sum .in{color:var(--fsw-up)}
+.fsw-sum .out{color:var(--fsw-down)}
+.fsw-note{font-size:11.5px;color:var(--fsw-dim);line-height:1.45;margin:0}
+.fsw-bars{display:grid;grid-template-columns:auto 1fr auto;gap:5px 10px;align-items:center;font:10.5px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.fsw-bars .nm{color:var(--fsw-muted);white-space:nowrap}
+.fsw-bars .nm b{color:var(--fsw-fg);font-weight:500}
+.fsw-bars svg{width:100%;height:16px}
+.fsw-bars .bv{display:grid;grid-template-columns:1fr 1fr;height:8px}
+.fsw-bars .bv i{display:block;height:100%}
+.fsw-bars .bv i:first-child{justify-self:end;background:linear-gradient(270deg,var(--fsw-down),rgba(255,92,92,.25));border-radius:2px 0 0 2px}
+.fsw-bars .bv i:last-child{background:linear-gradient(90deg,var(--fsw-up),rgba(63,224,166,.25));border-radius:0 2px 2px 0}
+.fsw-bars .nt{text-align:right;min-width:3.2ch}
+.fsw-feedh{border-top:1px solid var(--fsw-line);padding-top:10px}
+.fsw-feed{display:flex;flex-direction:column;gap:3px;font:11px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;min-height:0;overflow:hidden;flex:1}
+.fsw-feed div{display:grid;grid-template-columns:1.2ch 6ch 1fr auto;gap:8px;animation:fsw-row .5s cubic-bezier(.16,1,.3,1)}
+.fsw-feed b{font-weight:500}
+.fsw-feed .u{color:var(--fsw-up)}
+.fsw-feed .d{color:var(--fsw-down)}
+.fsw-feed .s{color:var(--fsw-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@keyframes fsw-row{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.fsw-bar{position:absolute;left:28px;right:334px;bottom:20px;display:flex;align-items:center;gap:16px;padding:11px 16px}
+.fsw .fsw-play{font:500 11px 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--fsw-fg);background:rgba(89,216,255,.12);border:1px solid var(--fsw-line);border-radius:9px;padding:9px 12px;cursor:pointer;min-width:84px}
+.fsw-track{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.fsw-track input{width:100%;margin:0;accent-color:var(--fsw-blue)}
+.fsw-ticks{position:relative;height:12px;font:10px 'JetBrains Mono',monospace;color:var(--fsw-dim)}
+.fsw-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.fsw-ticks span:first-child{transform:none}
+.fsw-ticks span:last-child{transform:translateX(-100%)}
+.fsw-ticks span.on{color:var(--fsw-fg)}
+.fsw-ticks i{font-style:normal}
+.fsw-stamp{font:400 24px 'Instrument Serif',Georgia,serif;min-width:9ch;text-align:right;white-space:nowrap}
+.fsw button:focus-visible,.fsw input:focus-visible{outline:2px solid var(--fsw-blue);outline-offset:1px}
+/* Narrow: title above, stage, log below */
+.fsw.narrow{height:auto;display:flex;flex-direction:column;gap:12px;border:0;background:transparent;overflow:visible}
+.fsw.narrow .fsw-top{position:static;max-width:none;order:1}
+.fsw.narrow .fsw-stage{position:relative;order:2;height:66vh;min-height:420px;background:var(--fsw-field)}
+.fsw.narrow .fsw-log{position:static;order:3;width:auto;max-height:520px}
+.fsw.narrow .fsw-story{left:10px;right:10px;top:10px;bottom:auto;max-width:none}
+.fsw.narrow .fsw-story p{font-size:16px}
+.fsw.narrow .fsw-top p{display:none}
+.fsw.narrow .fsw-navrow{top:auto;bottom:74px;left:10px;right:10px;transform:none;justify-content:center;gap:12px}
+.fsw.narrow .fsw-back .fsw-dim{display:none}
+.fsw.narrow .fsw-hint{min-width:0;font-size:9.5px;letter-spacing:.1em;line-height:1.4;white-space:normal;text-align:center}
+.fsw.narrow .fsw-lab{font-size:9.5px}
+.fsw.narrow .fsw-lab.ind{display:none}
+.fsw.narrow .fsw-bar{left:10px;right:10px;bottom:10px;gap:10px;padding:9px 11px}
+.fsw.narrow .fsw-stamp{font-size:18px;min-width:0}
+.fsw.narrow .fsw-ticks i{display:none}
