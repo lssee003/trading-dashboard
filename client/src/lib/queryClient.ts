@@ -14,6 +14,7 @@ const STATIC_PATH_MAP: Record<string, string> = {
   "/api/dashboard": "/data/dashboard.json",
   "/api/sheets": "/data/sheets.json",
   "/api/rs-stocks": "/data/rs-stocks.json",
+  "/api/ep": "/data/ep/latest.json", // one file, overwritten by each pre-market EP scan
 };
 
 function resolveStaticPath(queryKey: readonly unknown[]): string {
@@ -24,11 +25,6 @@ function resolveStaticPath(queryKey: readonly unknown[]): string {
     const params = new URLSearchParams(String(queryKey[1] ?? "").replace(/^\?/, ""));
     const lookback = params.get("lookback") || "25";
     return `/data/rs-${lookback}.json`;
-  }
-
-  // EP scan: an index of published days, plus one file per day
-  if (basePath === "/api/ep") {
-    return queryKey[1] ? `/data/ep/${String(queryKey[1])}.json` : "/data/ep/index.json";
   }
 
   return STATIC_PATH_MAP[basePath] || basePath;

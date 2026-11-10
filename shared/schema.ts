@@ -281,20 +281,3 @@ export type EpCriterion = z.infer<typeof EpCriterionSchema>;
 export type EpCandidate = z.infer<typeof EpCandidateSchema>;
 export type EpScreenerRow = z.infer<typeof EpScreenerRowSchema>;
 export type EpScan = z.infer<typeof EpScanSchema>;
-
-/** One line per published day, newest first — drives the EP tab's date picker */
-export const EpIndexSchema = z.object({
-  schema_version: z.number(),
-  updated_utc: z.string(),
-  scans: z.array(z.object({
-    date: z.string(),
-    verdict: EpOutcome,
-    strong_count: z.number(),
-    watchlist: z.array(z.string()),
-    screened: z.number(),
-    scored: z.number(),
-    warnings: z.number(),
-  })),
-});
-
-export type EpIndex = z.infer<typeof EpIndexSchema>;

@@ -1,6 +1,6 @@
 import { Fragment, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { EpCandidate, EpIndex, EpScan, EpScreenerRow } from "@shared/schema";
+import type { EpCandidate, EpScan, EpScreenerRow } from "@shared/schema";
 import { useV2, PageHead, Loading, Dot, HScroll } from "./ui";
 import { SIG, MONO, SERIF, PANEL, KICKER, num, pct, big, type Sig } from "./tokens";
 
@@ -32,9 +32,6 @@ const TRAPS: Record<number, string> = {
 
 const KILL_SIGNAL = "Kill signal: a close below the pre-market entry price carries a 62% historical reversal rate.";
 
-/** How many recent days get a chip; older days move into the dropdown */
-const CHIP_DAYS = 10;
-
 const OUTCOME_SIG: Record<string, Sig> = { PASS: SIG.up, PARTIAL: SIG.mid, FAIL: SIG.down };
 const STATUS_WORD: Record<string, string> = { pass: "Met", partial: "Partial", fail: "Not met", unverified: "Unverified", tbd: "After the open" };
 const CATALYST: Record<string, [string, string]> = { verified: ["Verified", SIG.up.c], unverified: ["Unverified", SIG.mid.c], none: ["None", "#8c9bb0"] };
@@ -45,20 +42,15 @@ const para: CSSProperties = { margin: 0, fontSize: 13.5, lineHeight: 1.6, color:
 const mono: CSSProperties = { fontFamily: MONO, fontVariantNumeric: "tabular-nums" };
 
 const dayOf = (iso: string) => new Date(iso + "T12:00:00Z");
-const dayShort = (iso: string) => dayOf(iso).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const dayLong = (iso: string) => dayOf(iso).toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const pts = (v: number | null | undefined) => (v == null ? "" : String(+v.toFixed(2)));
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 export default function EPScanV2() {
-  const { data: idx, isError } = useQuery<EpIndex>({ queryKey: ["/api/ep"] });
-  const [picked, setPicked] = useState<string | null>(null);
-  const days = idx?.scans ?? [];
-  const date = picked && days.some((s) => s.date === picked) ? picked : days[0]?.date;
-  const { data: scan, isError: scanError } = useQuery<EpScan>({ queryKey: ["/api/ep", date], enabled: !!date });
-  const ready = scan && scan.scan_date === date ? scan : null;
+  // One file, overwritten by each scan: the page always shows the latest run
+  const { data: scan, isError } = useQuery<EpScan>({ queryKey: ["/api/ep"] });
 
-  if (isError || (idx && !days.length)) {
+  if (isError) {
     return (
       <div data-screen-label="EP scan" style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: 10 }}>
         <PageHead meta="Pre-market EP scan" italic="Episodic" after="pivots" />
@@ -66,24 +58,20 @@ export default function EPScanV2() {
       </div>
     );
   }
-  if (!idx) return <div style={{ paddingTop: 10 }}><Loading>Reading the scan</Loading></div>;
+  if (!scan) return <div style={{ paddingTop: 10 }}><Loading>Reading the scan</Loading></div>;
 
-  const env = ready ? environment(ready) : null;
+  const env = environment(scan);
   return (
     <div data-screen-label="EP scan" style={{ display: "flex", flexDirection: "column", gap: 28, paddingTop: 10 }}>
       <PageHead
         meta={<span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 10px" }}>
           <span>Pre-market EP scan</span>
-          {date && <span>· {dayLong(date)}</span>}
-          {ready && <span>· run {ready.run.et_time} ET</span>}
+          <span>· {dayLong(scan.scan_date)}</span>
+          <span>· run {scan.run.et_time} ET</span>
         </span>}
-        italic={env ? env.word : "Episodic"} after={env ? "EP environment" : "pivots"}
-      >
-        <DayPicker days={days} date={date} onPick={setPicked} />
-      </PageHead>
-      {scanError ? <p style={{ ...para, color: SIG.mid.c }}>The scan for {date} could not be loaded.</p>
-        : !ready || !env ? <Loading>Reading the scan</Loading>
-        : <Scan key={ready.scan_date} scan={ready} env={env} />}
+        italic={env.word} after="EP environment"
+      />
+      <Scan scan={scan} env={env} />
     </div>
   );
 }
@@ -161,35 +149,6 @@ function Environment({ scan, env }: { scan: EpScan; env: Env }) {
         })}
       </div>
     </section>
-  );
-}
-
-/** Recent days as chips (dot = that day's verdict); anything older sits in a dropdown */
-function DayPicker({ days, date, onPick }: { days: EpIndex["scans"]; date: string | undefined; onPick: (d: string) => void }) {
-  const recent = days.slice(0, CHIP_DAYS), older = days.slice(CHIP_DAYS);
-  const olderOn = older.some((s) => s.date === date);
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-      <div className="v2-noscroll" role="group" aria-label="Scan date" style={{ display: "flex", alignItems: "center", gap: 2, padding: 4, borderRadius: 999, background: "rgba(8,14,26,.62)", border: "1px solid rgba(150,190,255,.13)", maxWidth: "100%", overflowX: "auto" }}>
-        {recent.map((s) => {
-          const on = s.date === date;
-          return (
-            <button key={s.date} onClick={() => onPick(s.date)} aria-pressed={on} title={`${s.verdict}, ${s.watchlist.length ? "watch list " + s.watchlist.join(", ") : "no watch list"}`}
-              style={{ display: "flex", alignItems: "center", gap: 7, height: 30, padding: "0 12px", borderRadius: 15, border: 0, background: on ? "#eef4ff" : "transparent", color: on ? "#04070d" : "#8c9bb0", fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap", transition: "background .2s, color .2s" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: OUTCOME_SIG[s.verdict].c, flexShrink: 0 }} />
-              {dayShort(s.date)}
-            </button>
-          );
-        })}
-      </div>
-      {older.length > 0 && (
-        <select aria-label="Older scans" value={olderOn ? date : ""} onChange={(e) => e.target.value && onPick(e.target.value)}
-          style={{ height: 38, padding: "0 14px", borderRadius: 19, background: "rgba(8,14,26,.62)", border: "1px solid rgba(150,190,255,.13)", color: olderOn ? TEXT : "#8c9bb0", fontFamily: "inherit", fontSize: 12.5, cursor: "pointer" }}>
-          <option value="">Older scans ({older.length})</option>
-          {older.map((s) => <option key={s.date} value={s.date}>{dayShort(s.date)} {dayOf(s.date).getUTCFullYear()}, {s.verdict}</option>)}
-        </select>
-      )}
-    </div>
   );
 }
 

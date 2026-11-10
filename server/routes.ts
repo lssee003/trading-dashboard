@@ -59,17 +59,11 @@ export async function registerRoutes(server: Server, app: Express) {
     }
   });
 
-  // Pre-market EP scan — the scheduled scan publishes these JSON files; dev serves them as-is
-  const EP_DIR = path.resolve("client/public/data/ep");
-  const sendEpFile = (file: string, res: import("express").Response) => {
-    const full = path.join(EP_DIR, file);
-    if (!fs.existsSync(full)) return res.status(404).json({ error: "No EP scan published", file });
-    res.type("application/json").send(fs.readFileSync(full, "utf-8"));
-  };
-  app.get("/api/ep", (_req, res) => sendEpFile("index.json", res));
-  app.get("/api/ep/:date", (req, res) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(req.params.date)) return res.status(400).json({ error: "Date must be YYYY-MM-DD" });
-    sendEpFile(`${req.params.date}.json`, res);
+  // Pre-market EP scan — the scheduled scan overwrites this one file; dev serves it as-is
+  app.get("/api/ep", (_req, res) => {
+    const file = path.resolve("client/public/data/ep/latest.json");
+    if (!fs.existsSync(file)) return res.status(404).json({ error: "No EP scan published" });
+    res.type("application/json").send(fs.readFileSync(file, "utf-8"));
   });
 
   // Google Sheets endpoint
