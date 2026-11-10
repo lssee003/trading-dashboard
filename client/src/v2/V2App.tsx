@@ -5,20 +5,21 @@ import { AuraRing } from "./AuraRing";
 import { V2Context, Spinner, TAPE_H, type V2Ctx } from "./ui";
 import { SIG, MONO, SERIF, EASE, accentFor, ago, fmtDate, lsGet, lsSet } from "./tokens";
 import MonitorV2, { Tape } from "./MonitorV2";
+import EPScanV2 from "./EPScanV2";
 import RelativeStrengthV2 from "./RelativeStrengthV2";
 import StockRSV2 from "./StockRSV2";
 import BreadthV2 from "./BreadthV2";
 import AIStackV2 from "./AIStackV2";
 import "./v2.css";
 
-export type V2Page = "monitor" | "rs" | "stocks" | "breadth" | "stack";
+export type V2Page = "monitor" | "ep" | "rs" | "stocks" | "breadth" | "stack";
 
-export const NAV: [V2Page, string][] = [["monitor", "Monitor"], ["rs", "Sectors"], ["stocks", "Stocks"], ["breadth", "Breadth"], ["stack", "AI stack"]];
+export const NAV: [V2Page, string][] = [["monitor", "Monitor"], ["ep", "EP scan"], ["rs", "Sectors"], ["stocks", "Stocks"], ["breadth", "Breadth"], ["stack", "AI stack"]];
 
-/** Classic-UI hash route for each v2 page (Stock RS lives inside the classic RS page) */
-export const CLASSIC_ROUTE: Record<V2Page, string> = { monitor: "/", rs: "/relative-strength", stocks: "/relative-strength", breadth: "/market-breadth", stack: "/ai-stack" };
+/** Classic-UI hash route for each v2 page (Stock RS lives inside the classic RS page; the EP scan has no classic page, so its route shows the classic Monitor) */
+export const CLASSIC_ROUTE: Record<V2Page, string> = { monitor: "/", ep: "/ep-scan", rs: "/relative-strength", stocks: "/relative-strength", breadth: "/market-breadth", stack: "/ai-stack" };
 
-const PAGES: Record<V2Page, () => JSX.Element | null> = { monitor: MonitorV2, rs: RelativeStrengthV2, stocks: StockRSV2, breadth: BreadthV2, stack: AIStackV2 };
+const PAGES: Record<V2Page, () => JSX.Element | null> = { monitor: MonitorV2, ep: EPScanV2, rs: RelativeStrengthV2, stocks: StockRSV2, breadth: BreadthV2, stack: AIStackV2 };
 
 const isPage = (p: string | null): p is V2Page => !!p && NAV.some((n) => n[0] === p);
 

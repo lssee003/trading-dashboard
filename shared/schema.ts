@@ -205,3 +205,96 @@ export const RSStocksResponseSchema = z.object({
 });
 
 export type RSStocksResponse = z.infer<typeof RSStocksResponseSchema>;
+
+// ─── Pre-market EP scan (written by the scheduled scan via `ep_tools.py publish`) ───
+
+const EpOutcome = z.enum(["PASS", "PARTIAL", "FAIL"]);
+
+export const EpCriterionSchema = z.object({
+  id: z.string(), // C1..C9
+  status: z.enum(["pass", "partial", "fail", "unverified", "tbd"]),
+  score: z.number().nullable(), // null = to be confirmed after the open (C9)
+  rationale: z.string(),
+});
+
+export const EpCandidateSchema = z.object({
+  ticker: z.string(),
+  rank: z.number(),
+  strength: z.enum(["Strong", "Moderate-Strong", "Moderate", "Weak", "Excluded"]),
+  outcome: EpOutcome,
+  catalyst: z.string(),
+  criteria: z.array(EpCriterionSchema).nullable(), // null when a hard trap ended scoring
+  score: z.number().nullable(),
+  traps: z.array(z.object({ id: z.number(), severity: z.enum(["hard", "cautionary"]), note: z.string() })),
+  pm: z.object({ price: z.number(), gap_pct: z.number(), volume: z.number(), avg_vol_90d: z.number().nullable().optional() }),
+  note: z.string(),
+  lifecycle: z.string().nullable().optional(),
+});
+
+export const EpScreenerRowSchema = z.object({
+  ticker: z.string(),
+  exchange: z.string().optional(),
+  company: z.string().optional(),
+  gap_pct: z.number(),
+  pm_volume: z.number(),
+  pm_price: z.number(),
+  market_cap: z.number(),
+  last_er: z.string().nullable().optional(),
+  e_flag: z.boolean(),
+  catalyst: z.object({
+    status: z.enum(["verified", "unverified", "none"]),
+    summary: z.string(),
+    source: z.string().optional(),
+    attempts: z.array(z.string()).optional(),
+  }),
+  disposition: z.enum(["ranked", "excluded"]),
+  reason: z.string(),
+});
+
+export const EpScanSchema = z.object({
+  schema_version: z.number(),
+  scan_date: z.string(), // YYYY-MM-DD, US-Eastern
+  run: z.object({ started_utc: z.string(), et_time: z.string(), session: z.string(), mode: z.enum(["full", "awareness"]), note: z.string().nullable().optional() }),
+  verdict: z.object({ status: EpOutcome, strong_count: z.number(), regime: z.string() }),
+  market: z.object({
+    vix: z.number().nullable(),
+    spx: z.number().nullable(),
+    spx_ytd_pct: z.number().nullable(),
+    spx_vs_sma50_pct: z.number().nullable(),
+    spx_vs_sma200_pct: z.number().nullable(),
+    trap8: z.boolean(),
+    notes: z.string().nullable().optional(),
+  }),
+  screener: z.array(EpScreenerRowSchema),
+  cross_check: z.string().nullable().optional(),
+  candidates: z.array(EpCandidateSchema),
+  narrative: z.object({ regime: z.string(), analysis: z.string(), lifecycle: z.string().nullable().optional() }),
+  sources: z.array(z.object({ command: z.string(), source: z.string(), fetched_utc: z.string().nullable().optional(), note: z.string().nullable().optional() })),
+  watchlist: z.array(z.string()),
+  failures: z.array(z.string()).optional(),
+  max_score: z.number(),
+  warnings: z.array(z.string()),
+  published_utc: z.string(),
+});
+
+export type EpCriterion = z.infer<typeof EpCriterionSchema>;
+export type EpCandidate = z.infer<typeof EpCandidateSchema>;
+export type EpScreenerRow = z.infer<typeof EpScreenerRowSchema>;
+export type EpScan = z.infer<typeof EpScanSchema>;
+
+/** One line per published day, newest first — drives the EP tab's date picker */
+export const EpIndexSchema = z.object({
+  schema_version: z.number(),
+  updated_utc: z.string(),
+  scans: z.array(z.object({
+    date: z.string(),
+    verdict: EpOutcome,
+    strong_count: z.number(),
+    watchlist: z.array(z.string()),
+    screened: z.number(),
+    scored: z.number(),
+    warnings: z.number(),
+  })),
+});
+
+export type EpIndex = z.infer<typeof EpIndexSchema>;

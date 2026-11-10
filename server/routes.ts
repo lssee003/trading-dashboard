@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import fs from "fs";
+import path from "path";
 import { fetchDashboardData } from "./marketData";
 import { fetchRelativeStrength } from "./rsData";
 import { fetchBreadthMetrics } from "./breadthData";
@@ -55,6 +57,19 @@ export async function registerRoutes(server: Server, app: Express) {
         message: (error as Error).message,
       });
     }
+  });
+
+  // Pre-market EP scan — the scheduled scan publishes these JSON files; dev serves them as-is
+  const EP_DIR = path.resolve("client/public/data/ep");
+  const sendEpFile = (file: string, res: import("express").Response) => {
+    const full = path.join(EP_DIR, file);
+    if (!fs.existsSync(full)) return res.status(404).json({ error: "No EP scan published", file });
+    res.type("application/json").send(fs.readFileSync(full, "utf-8"));
+  };
+  app.get("/api/ep", (_req, res) => sendEpFile("index.json", res));
+  app.get("/api/ep/:date", (req, res) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(req.params.date)) return res.status(400).json({ error: "Date must be YYYY-MM-DD" });
+    sendEpFile(`${req.params.date}.json`, res);
   });
 
   // Google Sheets endpoint

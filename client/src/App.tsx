@@ -35,6 +35,7 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/ep-scan" component={Dashboard} />
       <Route path="/relative-strength" component={RelativeStrength} />
       <Route path="/ai-stack" component={AIStack} />
       <Route path="/market-breadth" component={GoogleSheets} />
