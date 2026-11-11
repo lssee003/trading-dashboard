@@ -11,19 +11,20 @@ import { SIG, MONO, SERIF, PANEL, KICKER, num, pct, big, type Sig } from "./toke
  *   3. Board: every gapper on one grid, one column per criterion, so names compare at a glance
  */
 
-/** Scored criteria, in grid order: id, column label, full name, max points (null = confirmed after the open). C8 is narrative only and never scores, so it has no column. */
+/** Scored criteria, in grid order: id, column label, full name, max points (null = confirmed after the open). C1 and C2 are read by catalyst type (earnings or non-earnings); C8 scores only for a group-confirmed theme. */
 const CRIT: [string, string, string, number | null][] = [
-  ["C1", "Profit", "First profit or revenue acceleration", 1],
-  ["C2", "Guide", "Guidance raise", 1],
+  ["C1", "Catalyst", "Catalyst magnitude", 1],
+  ["C2", "Forward", "Forward visibility", 1],
   ["C3", "Neglect", "Neglected 6+ months", 2],
   ["C4", "Volume", "Record volume", 1],
   ["C5", "Float", "Float", 1],
-  ["C6", "Short", "Short % of float", 1.5],
+  ["C6", "Short", "Short interest", 1.5],
   ["C7", "Funds", "Fund ownership", 1],
+  ["C8", "Theme", "Hot theme (group-confirmed)", 0.5],
   ["C9", "Close", "Close near EP-day high", null],
 ];
-const CRIT_NAME: Record<string, string> = { ...Object.fromEntries(CRIT.map((c) => [c[0], c[2]])), C8: "Hot theme (narrative only)" };
-const CRIT_MAX: Record<string, number | null> = { ...Object.fromEntries(CRIT.map((c) => [c[0], c[3]])), C8: 0 };
+const CRIT_NAME: Record<string, string> = Object.fromEntries(CRIT.map((c) => [c[0], c[2]]));
+const CRIT_MAX: Record<string, number | null> = Object.fromEntries(CRIT.map((c) => [c[0], c[3]]));
 
 const TRAPS: Record<number, string> = {
   1: "Priced-in extension", 2: "Buyout target at deal price", 3: "Midnight leader", 4: "Overreaction gap on weak catalyst",
@@ -218,7 +219,7 @@ function Board({ scan }: { scan: EpScan }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(ranked.filter((r) => r.c!.outcome !== "FAIL").map((r) => r.ticker)));
   const toggle = (tk: string) => setOpen((o) => { const n = new Set(o); n.has(tk) ? n.delete(tk) : n.add(tk); return n; });
 
-  const CW = mobile ? 34 : 44, CG = 4, critW = CRIT.length * CW + (CRIT.length - 1) * CG;
+  const CW = mobile ? 32 : 44, CG = 4, critW = CRIT.length * CW + (CRIT.length - 1) * CG;
   const cols = `28px 132px 74px 96px 76px minmax(170px,1fr) ${critW}px 70px 82px 16px`;
   const head: CSSProperties = { ...cap, color: MUTED, whiteSpace: "nowrap" };
   const pad = mobile ? "0 12px" : "0 20px";
@@ -230,7 +231,7 @@ function Board({ scan }: { scan: EpScan }) {
   const total = (r: Row) => r.c?.score == null
     ? <span style={{ ...mono, fontSize: 13, color: MUTED }}>n/a</span>
     : <span style={{ ...mono, fontSize: 17, color: OUTCOME_SIG[r.c.outcome].c }}>{pts(r.c.score)}<span style={{ fontSize: 11, color: MUTED }}>/{scan.max_score}</span></span>;
-  /** The criteria band: eight score cells, or the reason there are none */
+  /** The criteria band: nine score cells, or the reason there are none */
   const band = (r: Row) => {
     const hard = r.c?.traps.find((t) => t.severity === "hard");
     if (r.c?.criteria) return <span style={{ display: "flex", gap: CG }}>{CRIT.map(([id]) => <Cell key={id} w={CW} x={r.c!.criteria!.find((x) => x.id === id)} />)}</span>;
@@ -315,7 +316,7 @@ function Board({ scan }: { scan: EpScan }) {
     <section aria-label="Board" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "4px 16px" }}>
         <h2 style={{ margin: 0, fontFamily: SERIF, fontWeight: 400, fontSize: 30, color: TEXT }}>The board</h2>
-        <span style={{ fontSize: 12.5, color: MUTED }}>Screen: gap above 4%, pre-market volume above 50k, price above $5, cap under $10B. Select a row for the reasoning.</span>
+        <span style={{ fontSize: 12.5, color: MUTED }}>Screen: gap above 4%, pre-market volume above 50k, price above $5 (or $2 to $5 with $1M of pre-market dollar volume), cap under $10B. Select a row for the reasoning.</span>
       </div>
       <div style={{ borderRadius: 12, background: "rgba(4,8,16,.72)", border: "1px solid rgba(150,190,255,.12)", overflow: "hidden" }}>
         {mobile ? table : <HScroll>{table}</HScroll>}
@@ -326,7 +327,7 @@ function Board({ scan }: { scan: EpScan }) {
         <Key swatch={{ background: "rgba(150,190,255,.05)" }}>0, not met</Key>
         <Key swatch={{ border: "1px dashed rgba(255,194,74,.6)" }}>? unverified, scores 0</Key>
         <Key swatch={{ border: "1px dashed rgba(89,216,255,.5)" }}>TBD, confirmed after the open</Key>
-        <span>Neglect scores up to 2, Short up to 1.5, the rest up to 1. Pass needs 6.3 of {scan.max_score}.</span>
+        <span>Neglect scores up to 2, Short up to 1.5, Theme up to 0.5, the rest up to 1. Pass needs 6.3 of {scan.max_score}.</span>
       </div>
       {scan.cross_check && <p style={{ ...para, fontSize: 12.5, color: SOFT, maxWidth: "110ch" }}><span style={{ color: TEXT }}>Screen cross-check. </span>{scan.cross_check}</p>}
     </section>
