@@ -97,6 +97,10 @@ const ETF_META: Record<string, { name: string; category: "Index" | "Sector" | "I
   FOTO: { name: "Photonics", category: "Industry Group" },
   PAVE: { name: "Industrial Buildout", category: "Industry Group" },
   NCLD: { name: "Neocloud", category: "Industry Group" },
+  PPH:  { name: "Large-Cap Pharma", category: "Industry Group" },
+  IGF:  { name: "Global Infrastructure", category: "Industry Group" },
+  UNG:  { name: "Natural Gas", category: "Industry Group" },
+  KURE: { name: "China Health", category: "Industry Group" },
 };
 
 // ─── Cache ───
